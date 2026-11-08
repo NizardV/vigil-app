@@ -1,0 +1,17 @@
+.git
+.github
+.claude
+.venv
+.pgdata
+.pgdev*
+.env*
+**/*.env
+**/__pycache__
+.ruff_cache
+.import_linter_cache
+backend
+streamlit
+prototypes
+docs
+infra
+nginx

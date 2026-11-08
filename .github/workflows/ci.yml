@@ -1,0 +1,36 @@
+name: CI
+on:
+  pull_request:
+  workflow_call:   # réutilisé par deploy.yml (les tests passent avant tout déploiement)
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: vigil
+          POSTGRES_USER: vigil
+          POSTGRES_PASSWORD: ci
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U vigil" --health-interval 5s --health-timeout 3s --health-retries 10
+    env:
+      POSTGRES_DB: vigil
+      POSTGRES_USER: vigil
+      POSTGRES_PASSWORD: ci
+      POSTGRES_HOST: localhost
+      DJANGO_DEBUG: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --frozen
+      - run: uv run ruff check src
+      - run: uv run ruff format --check src
+      - run: PYTHONPATH=src uv run lint-imports
+      - run: uv run python src/manage.py makemigrations --check --dry-run
+      - run: uv run python src/manage.py test modules core

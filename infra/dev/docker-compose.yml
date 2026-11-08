@@ -1,0 +1,30 @@
+# PostgreSQL de développement : même image que la production (vigil-infra), avec pgvector.
+#
+#   docker compose -f infra/dev/docker-compose.yml up -d
+#   set -a; . infra/dev/dev.env; set +a      # puis manage.py normalement
+#   docker compose -f infra/dev/docker-compose.yml down        # arrêt (données conservées)
+#   docker compose -f infra/dev/docker-compose.yml down -v     # arrêt + suppression des données
+#
+# Développement uniquement : identifiants factices, écoute limitée à 127.0.0.1.
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: vigil_dev_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: vigil
+      POSTGRES_USER: vigil
+      POSTGRES_PASSWORD: vigil_dev
+    ports:
+      - "127.0.0.1:5433:5432"   # 5433 comme l'ancien déploiement, pour ne pas entrer en conflit avec un 5432 local
+    volumes:
+      - vigil_dev_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vigil -d vigil"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  vigil_dev_pgdata:
