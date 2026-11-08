@@ -21,7 +21,7 @@ feedparser==6.0.12
 httpx==0.28.1
 
 # Embeddings
-sentence-transformers==5.6.0
+sentence-transformers==6.2.0
 
 # Utils
 pydantic==2.13.4
