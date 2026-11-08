@@ -15,7 +15,8 @@ cd /home/debian/vigil
 export VIGIL_TAG="$TAG"
 PREVIOUS="$(cat .current-tag 2>/dev/null || echo latest)"
 
-docker compose --env-file vigil.env pull web worker migrate
+# L'image est publique : on la télécharge sans identifiant (un ancien identifiant ghcr.io périmé du serveur la ferait refuser).
+DOCKER_CONFIG=/home/debian/vigil/.docker-anon docker compose --env-file vigil.env pull web worker migrate
 docker compose --env-file vigil.env up -d --remove-orphans
 
 # Attend que le site réponde ; sinon, retour automatique à la version précédente.
