@@ -1,32 +1,32 @@
 # API
-fastapi==0.139.0
-uvicorn[standard]==0.50.0
+fastapi==0.162.0
+uvicorn[standard]==0.54.0
 
 # BDD
-sqlalchemy==2.0.51
-asyncpg==0.31.0
-alembic==1.18.5
-psycopg2-binary==2.9.12
-pgvector==0.4.2
+sqlalchemy==2.1.8
+asyncpg==0.32.0
+alembic==1.20.1
+psycopg2-binary==2.9.13
+pgvector==0.5.1
 
 # Celery
 celery==5.6.3
-redis==8.0.1
+redis==8.1.0
 
 # LLM
 google-generativeai==0.8.6
 
 # RSS
-feedparser==6.0.12
+feedparser==6.0.14
 httpx==0.28.1
 
 # Embeddings
 sentence-transformers==5.6.0
 
 # Utils
-pydantic==2.13.4
-pydantic-settings==2.14.2
-python-dotenv==1.2.2
+pydantic==2.14.2
+pydantic-settings==2.16.2
+python-dotenv==1.2.4
 
 # Discord
 PyNaCl==1.6.2
@@ -36,8 +36,8 @@ bcrypt==5.0.0
 python-jose[cryptography]==3.5.0
 pyotp==2.10.0
 qrcode==8.2
-resend==2.32.2
+resend==2.51.0
 
 # Auth middleware
-python-multipart==0.0.32
+python-multipart==0.0.33
 email-validator>=2.0
