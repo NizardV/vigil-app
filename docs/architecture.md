@@ -72,10 +72,10 @@ Les modules ne s'appellent pas entre eux : ils partagent uniquement `core`. Les 
 | 1 | Projet Django, réglages durcis, contrôles (ruff, import-linter, tests) | fait |
 | 2 | Port de `modules/projects` complet (Notion, webhooks GitHub) | à faire |
 | 3 | Extraction de `core` (notifications Discord, LLM) | à faire |
-| 4 | Port de `modules/watch` (modèles, scoring, digests) + migration des données | **code fait** ; import à exécuter sur la vraie base à la bascule |
-| 5 | Image Docker unique, compose et NGINX dans `infra/`, CI + déploiement, sauvegardes | à faire |
-| 6 | Bascule en production, puis archivage de `vigil-backend`, `vigil-streamlit`, `vigil-infra` | à faire |
-| 7 | Suppression de `backend/`, `streamlit/`, `prototypes/` | à faire |
+| 4 | Port de `modules/watch` (modèles, scoring, digests) + migration des données | fait ; l'import des anciennes données n'a pas été exécuté (choix : repartir de zéro, ancienne base archivée) |
+| 5 | Image Docker unique, compose et NGINX dans `infra/`, CI + déploiement, sauvegardes | fait (`Dockerfile`, `infra/prod/`, `.github/workflows/`) |
+| 6 | Bascule en production (2026-11-08), archivage des anciens dépôts | fait (anciens conteneurs arrêtés, à supprimer après un mois) |
+| 7 | Suppression de `backend/`, `streamlit/`, `prototypes/` | fait (restent consultables dans l'historique git) |
 
 Chaque étape doit laisser la branche dans un état vérifiable (tests, ruff, import-linter au vert).
 La production reste sur l'ancien code jusqu'à l'étape 6.

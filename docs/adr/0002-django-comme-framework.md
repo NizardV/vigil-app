@@ -46,5 +46,6 @@ en Python.
 
 ## Sort des prototypes
 
+(Les prototypes ont été supprimés du dépôt le 2026-11-08 ; ils restent dans l'historique git.)
 `prototypes/django-projects` a servi de base au vrai projet (`src/`). `prototypes/dotnet-projects`
 est conservé comme trace de la comparaison ; il peut être supprimé sans impact.

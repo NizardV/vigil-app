@@ -32,8 +32,6 @@ src/
 infra/               docker-compose, NGINX, scripts d'audit VPS
 docs/                architecture, ADR, runbooks
 .claude/             ce contexte, skills, specs
-prototypes/          comparaison Django / .NET (historique, supprimable)
-backend/ streamlit/  ancien code, à supprimer une fois le portage terminé
 ```
 
 ## Commandes
