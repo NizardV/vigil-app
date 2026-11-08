@@ -14,3 +14,14 @@ redis_data/
 n8n_data/
 
 backend/celerybeat-schedule
+
+# Django / uv (refonte)
+.venv/
+__pycache__/
+/src/staticfiles/
+/.pgdata/
+/.pgdev.env
+/.pgdev.log
+
+# Webhooks Discord locaux : SECRETS, ne jamais commiter
+/infra/dev/webhooks.env

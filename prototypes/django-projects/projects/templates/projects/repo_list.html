@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="fr">
+<head><meta charset="utf-8"><title>Projets suivis</title></head>
+<body>
+  <h1>Projets suivis ({{ repos|length }})</h1>
+  <form method="post" action="{% url 'repo_sync' %}">{% csrf_token %}<button>Synchroniser</button></form>
+  <table>
+    <tr><th>Repo</th><th>Langage</th><th>Issues</th><th>Dernier push</th><th>Verdict</th></tr>
+    {% for r in repos %}
+    <tr>
+      <td>{{ r.full_name }}</td><td>{{ r.language }}</td><td>{{ r.open_issues }}</td>
+      <td>{{ r.pushed_at|date:"d/m/Y" }}</td><td>{{ r.verdict }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</body>
+</html>
