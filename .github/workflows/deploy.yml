@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  IMAGE: ghcr.io/nizardv/vigil
+  IMAGE: ghcr.io/nizardv/vigil-app
 
 jobs:
   tests:

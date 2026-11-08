@@ -6,7 +6,7 @@
 name: vigil
 
 x-app: &app
-  image: ghcr.io/nizardv/vigil:${VIGIL_TAG:-latest}
+  image: ghcr.io/nizardv/vigil-app:${VIGIL_TAG:-latest}
   restart: unless-stopped
   env_file: vigil.env
   environment:
