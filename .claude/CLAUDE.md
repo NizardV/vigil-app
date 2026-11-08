@@ -80,7 +80,7 @@ Django 6.1 · Python 3.13 · PostgreSQL 16 (sans pgvector, ADR 0005) partout (de
 ## Conventions
 
 - Typage sur les fonctions publiques ; `ruff` fait foi pour le style.
-- Commits en Conventional Commits (`feat:`, `fix:`, `chore:`…) ; release-please est en place.
+- Commits en Conventional Commits (`feat:`, `fix:`, `chore:`…) .
 - Branches `feat/*`, `fix/*` → PR vers `main`.
 - Les tests tournent sur PostgreSQL (le même moteur qu'en production) ; la CI devra démarrer un service PostgreSQL.
 
