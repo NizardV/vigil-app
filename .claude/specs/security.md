@@ -174,3 +174,20 @@ Webhooks `DISCORD_WEBHOOK_SECURITY_ALERTS` (alertes) et `DISCORD_WEBHOOK_SECURIT
 
 Améliorations possibles : regrouper les doublons dans l'alerte (même faille signalée sur plusieurs fichiers de
 dépendances) ; seuil de gravité et salon configurables ; accusé de réception côté Discord (boutons).
+
+## Source « code » : SonarCloud (ajoutée le 2026-11-08)
+
+Collecteur `collectors/sonarcloud.py` (client partagé `core/sonarcloud.py`, **lecture publique sans jeton**), tâche
+`security.audit_sonarcloud` (05:20 UTC), commande `audit_sonarcloud`. Projets : `SONARCLOUD_PROJECTS` (défaut
+`NizardV_vigil-app`). Deux contrôles par projet : `sonar_quality_gate` (échec = constat Haute) et `sonar_issues`.
+- Sécurité et fiabilité : tous les problèmes, avec la gravité de SonarCloud (BLOCKER = critique).
+- Maintenabilité : seulement les problèmes Haute/Bloquants, **plafonnés à Moyenne** : comptés dans le résumé, jamais
+  d'alerte Discord (ce n'est pas de la sécurité).
+- Projet injoignable ou introuvable : « non couvert », aucun constat n'est refermé.
+- Pour marquer un faux positif revu : commentaire `# NOSONAR - raison` dans le code (puis le constat se résout seul).
+
+## Résumé hebdomadaire unifié
+
+Un message `#sécurité-résumé` (lundi 08:00 UTC) regroupe les sources (serveur, GitHub, code) : ouverts / nouveaux /
+résolus **de la semaine**, gravités, 3 points prioritaires par source, PR Dependabot qui traînent, santé de l'audit.
+Les constats CYNA de l'audit du VPS sont volontairement conservés dans le résumé.

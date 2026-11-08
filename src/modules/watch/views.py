@@ -22,7 +22,7 @@ def _reply(text: str) -> JsonResponse:
     return JsonResponse({"type": 4, "data": {"content": text, "flags": EPHEMERAL, "allowed_mentions": {"parse": []}}})
 
 
-@csrf_exempt  # la signature Ed25519 de Discord remplace le jeton CSRF (appel de serveur à serveur)
+@csrf_exempt  # NOSONAR - revu : la signature Ed25519 de Discord remplace le jeton CSRF (appel de serveur à serveur)
 @require_POST
 def interactions(request):
     public_key = settings.DISCORD_PUBLIC_KEY

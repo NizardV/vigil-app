@@ -164,6 +164,12 @@ VPS_AUDIT_PUBLIC_PORTS = [
     int(p) for p in os.environ.get("VPS_AUDIT_PUBLIC_PORTS", "22,80,443").split(",") if p.strip().isdigit()
 ]  # ports autorisés sur toutes les interfaces ; tout autre port ouvert est signalé
 
+# --- Audit du code par SonarCloud (module security) : clés de projet séparées par des virgules, lecture publique ---
+SONARCLOUD_PROJECTS = [
+    p.strip() for p in os.environ.get("SONARCLOUD_PROJECTS", "NizardV_vigil-app").split(",") if p.strip()
+]
+SONARCLOUD_TOKEN = os.environ.get("SONARCLOUD_TOKEN", "")  # optionnel : projet privé uniquement (SECRET)
+
 # --- Module watch : veille RSS analysée par Gemini, résumés Discord avec boutons 👍/👎 ---
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")  # SECRET
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")

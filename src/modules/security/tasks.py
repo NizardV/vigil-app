@@ -40,6 +40,21 @@ def audit_vps(timestamp: int) -> dict:
     return {"audit": audit, "alert": alert}
 
 
+@app.periodic(cron="20 5 * * *")  # 05:20 UTC, après l'audit GitHub et celui du VPS
+@app.task(
+    name="security.audit_sonarcloud",
+    queueing_lock="security.audit_sonarcloud",
+    retry=RetryStrategy(max_attempts=2, wait=600),
+)
+def audit_sonarcloud(timestamp: int) -> dict:
+    """Audit du code par SonarCloud (lecture publique), puis alerte Discord sur les nouveaux constats graves."""
+    audit = services.run_sonarcloud_audit()
+    alert = notifications.notify_new_findings()
+    if alert["status"] == "error":
+        raise RuntimeError(f"Alerte Discord non envoyée : {alert['error']}")
+    return {"audit": audit, "alert": alert}
+
+
 @app.periodic(cron="0 8 * * 1")  # chaque lundi à 08:00
 @app.task(
     name="security.weekly_digest",

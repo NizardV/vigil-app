@@ -2,7 +2,9 @@
 
 Deux messages :
 - **alerte** : envoyée une seule fois par constat critique/haut (nouveau, rouvert ou aggravé) ;
-- **résumé hebdomadaire** : état d'ensemble, PR Dependabot qui traînent, et santé de l'audit lui-même.
+- **résumé hebdomadaire** : un seul message qui regroupe toutes les sources (serveur, GitHub, code) avec, pour
+  chacune, les constats ouverts / nouveaux / résolus de la semaine ; plus les PR Dependabot qui traînent et la santé
+  de l'audit lui-même.
 
 Garanties : un échec d'envoi ne marque rien comme notifié (on réessaiera) ; aucun message n'est envoyé
 deux fois ; le texte venant de l'extérieur (titres de PR, advisories) est neutralisé ; `dry_run` permet
@@ -24,6 +26,9 @@ from .models import CheckResult, Finding
 ALERT_MIN_SEVERITY = Finding.Severity.HIGH
 MAX_LISTED = 10  # lignes détaillées par message ; le reste est résumé par un compteur
 STALE_AUDIT = timedelta(hours=48)
+WEEK = timedelta(days=7)
+SECTION_TOP = 3  # points à traiter listés par source ; le détail complet est dans l'admin et Notion
+SOURCE_LABELS = {"vps": "🖥️ Serveur (VPS)", "github": "🐙 GitHub", "sonarcloud": "🔍 Code (SonarCloud)"}
 COLOR = {Finding.Severity.CRITICAL: 0xB91C1C, Finding.Severity.HIGH: 0xEA580C}
 NEUTRAL_COLOR = 0x2563EB
 DESCRIPTION_LIMIT = 3800  # l'API Discord plafonne la description d'un embed à 4096 caractères
@@ -110,12 +115,37 @@ def notify_new_findings(*, send: Sender = send_discord, dry_run: bool = False) -
     return {"status": "sent", "count": len(pending)}
 
 
+def _sources() -> list[str]:
+    """Sources connues, dans un ordre stable (serveur, GitHub, code), puis les éventuelles autres."""
+    present = set(Finding.objects.values_list("source", flat=True)) | set(
+        CheckResult.objects.values_list("source", flat=True)
+    )
+    known = [s for s in SOURCE_LABELS if s in present]
+    return known + sorted(present - set(SOURCE_LABELS))
+
+
+def _source_section(source: str, now) -> list[str]:
+    """Une source en quelques lignes : ouverts / nouveaux / résolus sur la semaine, gravités, points à traiter."""
+    findings = Finding.objects.filter(source=source)
+    open_findings = findings.filter(status=Finding.Status.OPEN)
+    by_severity = Counter(open_findings.values_list("severity", flat=True))
+    new = findings.filter(first_seen__gte=now - WEEK).count()
+    resolved = findings.filter(status=Finding.Status.RESOLVED, resolved_at__gte=now - WEEK).count()
+    label = SOURCE_LABELS.get(source, escape(source, 30))
+    lines = [f"**{label}** — {sum(by_severity.values())} ouvert(s) · {new} nouveau(x) · {resolved} résolu(s)"]
+    if by_severity:
+        lines.append(
+            " · ".join(f"{Finding.Severity(s).label} {by_severity[s]}" for s in sorted(by_severity, reverse=True))
+        )
+    serious = list(open_findings.filter(severity__gte=ALERT_MIN_SEVERITY).order_by("-severity", "target", "title"))
+    lines += [_line(f, n) for f, n in group_findings(serious)[:SECTION_TOP]]
+    return lines
+
+
 def digest_payload(now=None) -> dict[str, Any]:
     now = now or timezone.now()
     open_findings = Finding.objects.filter(status=Finding.Status.OPEN)
     by_severity = Counter(open_findings.values_list("severity", flat=True))
-    serious = list(open_findings.filter(severity__gte=ALERT_MIN_SEVERITY).order_by("-severity", "target", "title"))
-    top = group_findings(serious)[:5]
     stale = Counter(
         open_findings.filter(check_name="stale_dependabot_prs").values_list("target", flat=True)
     ).most_common(5)
@@ -130,12 +160,13 @@ def digest_payload(now=None) -> dict[str, Any]:
         if audit_stale
         else f"Dernier audit : {timezone.localtime(last_audit):%d/%m %H:%M}"
     )
-    severities = " · ".join(
-        f"{Finding.Severity(s).label} **{by_severity[s]}**" for s in sorted(by_severity, reverse=True)
-    )
-    lines = [health, "", f"**Constats ouverts : {sum(by_severity.values())}**", severities or "_aucun_"]
-    if top:
-        lines += ["", "**À traiter en priorité**", *[_line(f, n) for f, n in top]]
+    lines = [
+        health,
+        "",
+        f"**Constats ouverts : {sum(by_severity.values())}**" if by_severity else "**Aucun constat ouvert**",
+    ]
+    for source in _sources():
+        lines += ["", *_source_section(source, now)]
     if stale:
         lines += ["", "**PR Dependabot qui traînent**"]
         lines += [f"`{escape(t.split('/')[-1], 40)}` · {n} PR en attente" for t, n in stale]

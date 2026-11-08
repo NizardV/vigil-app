@@ -8,10 +8,12 @@ from django.db import transaction
 from django.utils import timezone
 
 from core.github import GitHubClient
+from core.sonarcloud import SonarCloudClient
 
 from . import vps_runner
 from .collectors import vps as vps_collector
 from .collectors.github import audit_github
+from .collectors.sonarcloud import audit_sonarcloud
 from .models import CheckResult, Finding
 from .outcomes import ERROR, FINDINGS, OK, UNAVAILABLE, CheckOutcome
 
@@ -111,6 +113,18 @@ def run_vps_audit(*, fetch=None, report: dict | None = None) -> dict:
         return {"status": "error", "error": str(exc)}
     outcomes = vps_collector.evaluate(report, target)
     outcomes.append(CheckOutcome(vps_collector.SOURCE, target, "vps_connection", OK))
+    for outcome in outcomes:
+        record_outcome(outcome)
+    return {"status": "ok", "checks": len(outcomes), "by_status": dict(Counter(o.status for o in outcomes))}
+
+
+def run_sonarcloud_audit(client: SonarCloudClient | None = None) -> dict:
+    """Audit du code par SonarCloud. Un projet injoignable est « non couvert » et ne referme aucun constat."""
+    projects = settings.SONARCLOUD_PROJECTS
+    if not projects:
+        return {"status": "not_configured"}
+    client = client or SonarCloudClient(settings.SONARCLOUD_TOKEN)
+    outcomes = audit_sonarcloud(client, projects)
     for outcome in outcomes:
         record_outcome(outcome)
     return {"status": "ok", "checks": len(outcomes), "by_status": dict(Counter(o.status for o in outcomes))}
