@@ -1,6 +1,6 @@
 streamlit==1.58.0
 httpx==0.28.1
 pandas==3.0.3
-plotly==6.8.0
+plotly==7.1.0
 python-dotenv==1.2.2
 
