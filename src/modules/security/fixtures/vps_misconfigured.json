@@ -1,0 +1,95 @@
+{
+ "schema": 1,
+ "collected_epoch": 1794055340,
+ "hostname": "37276495e1a8",
+ "os": "Debian GNU/Linux 12 (bookworm)",
+ "uptime_s": 5712,
+ "memory": {
+  "total_mb": 7919,
+  "available_mb": 6891,
+  "swap_total_mb": 2048,
+  "swap_used_mb": 0
+ },
+ "disks": [
+  {
+   "mount": "/vigil-audit.sh",
+   "used_pct": 26,
+   "avail_mb": 711764
+  },
+  {
+   "mount": "/work",
+   "used_pct": 99,
+   "avail_mb": 4528
+  },
+  {
+   "mount": "/etc/hosts",
+   "used_pct": 1,
+   "avail_mb": 976301
+  }
+ ],
+ "docker": {
+  "available": false,
+  "containers": []
+ },
+ "listening": [
+  {
+   "proto": "tcp",
+   "local": "127.0.0.1:5433",
+   "process": "nc"
+  },
+  {
+   "proto": "tcp",
+   "local": "0.0.0.0:443",
+   "process": "nc"
+  },
+  {
+   "proto": "tcp",
+   "local": "0.0.0.0:5432",
+   "process": "nc"
+  },
+  {
+   "proto": "tcp",
+   "local": "0.0.0.0:8000",
+   "process": "nc"
+  }
+ ],
+ "ssh": {
+  "password_auth": "yes",
+  "permit_root": "yes",
+  "port": 22
+ },
+ "firewall": {
+  "ufw": "absent",
+  "iptables_rules": null
+ },
+ "updates": {
+  "security_pending": 0,
+  "reboot_required": false,
+  "apt_index_age_h": 0
+ },
+ "certs": [
+  {
+   "domain": "bientot-expire.example",
+   "expires_epoch": 1794919338
+  },
+  {
+   "domain": "expire.example",
+   "expires_epoch": 1794141739
+  }
+ ],
+ "backups": {
+  "latest_epoch": 1793191339,
+  "latest_path": "/var/backups/vigil-db.sql.gz",
+  "searched": [
+   "/var/backups",
+   "/srv/backups",
+   "/opt/backups",
+   "/home/*/backups"
+  ]
+ },
+ "nginx": {
+  "installed": false,
+  "config_ok": null
+ },
+ "errors": []
+}

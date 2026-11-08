@@ -1,0 +1,52 @@
+[project]
+name = "vigil"
+version = "0.1.0"
+requires-python = ">=3.13"
+dependencies = [
+    "croniter>=6.2.4",
+    "django>=6.1,<6.2",
+    "feedparser>=6.0.14",
+    "gunicorn>=26.2.0",
+    "procrastinate[django]>=3.10.0",
+    "psycopg[binary]>=3.3.8",
+    "pynacl>=1.6.2",
+    "whitenoise>=6.12.0",
+]
+
+[dependency-groups]
+dev = [
+    "import-linter>=2.16",
+    "ruff>=0.17.4",
+]
+
+[tool.ruff]
+line-length = 120
+src = ["src"]
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "S", "DJ"]
+ignore = ["S101"]  # assert autorise (tests)
+
+[tool.importlinter]
+root_packages = ["core", "modules"]
+include_external_packages = false
+
+# Regle 4 : core ne depend d'aucun module metier.
+[[tool.importlinter.contracts]]
+name = "core ne depend pas des modules"
+type = "forbidden"
+source_modules = ["core"]
+forbidden_modules = ["modules"]
+
+# Regle 1 : les modules metier sont independants les uns des autres.
+# (Declarer ici chaque nouveau module ; ils ne communiquent que par service.py ou evenements.)
+[[tool.importlinter.contracts]]
+name = "modules independants"
+type = "independence"
+modules = ["modules.projects", "modules.security", "modules.system", "modules.watch"]
+
+[tool.ruff.lint.per-file-ignores]
+"**/tests.py" = ["S106"]            # mots de passe factices dans les tests
+"**/migrations/*.py" = ["E501"]     # fichiers generes
+"**/test_legacy.py" = ["E501", "S608"]  # jeux de donnees SQL statiques (pas de donnees externes dans les requetes)

@@ -1,0 +1,59 @@
+{
+ "schema": 1,
+ "collected_epoch": 1794055296,
+ "hostname": "8d067b68c057",
+ "os": "Debian GNU/Linux 12 (bookworm)",
+ "uptime_s": 5669,
+ "memory": {
+  "total_mb": 7919,
+  "available_mb": 6906,
+  "swap_total_mb": 2048,
+  "swap_used_mb": 0
+ },
+ "disks": [
+  {
+   "mount": "/vigil-audit.sh",
+   "used_pct": 26,
+   "avail_mb": 711764
+  },
+  {
+   "mount": "/etc/hosts",
+   "used_pct": 1,
+   "avail_mb": 976376
+  }
+ ],
+ "docker": {
+  "available": false,
+  "containers": []
+ },
+ "listening": null,
+ "ssh": null,
+ "firewall": {
+  "ufw": "absent",
+  "iptables_rules": null
+ },
+ "updates": {
+  "security_pending": 0,
+  "reboot_required": false,
+  "apt_index_age_h": 63
+ },
+ "certs": [],
+ "backups": {
+  "latest_epoch": null,
+  "latest_path": null,
+  "searched": [
+   "/var/backups",
+   "/srv/backups",
+   "/opt/backups",
+   "/home/*/backups"
+  ]
+ },
+ "nginx": {
+  "installed": false,
+  "config_ok": null
+ },
+ "errors": [
+  "listening: ss absent",
+  "ssh: « sshd -T » indisponible (droits ou sshd absent)"
+ ]
+}
