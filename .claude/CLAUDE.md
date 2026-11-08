@@ -94,9 +94,21 @@ Django 6.1 · Python 3.13 · PostgreSQL 16 (sans pgvector, ADR 0005) partout (de
 
 ## Déploiement
 
-CI GitHub Actions → image Docker → GHCR → SSH sur le VPS (secrets `VPS_HOST`, `VPS_USER`,
-`VPS_SSH_KEY`). Le déploiement actuel vise l'ancien code : **à réécrire pour Django** (étape 5 du
-plan de migration). Runbooks dans `docs/runbooks/`.
+**En production depuis le 2026-11-08** sur https://vigil.nizard.dev (dépôt `NizardV/vigil-app`, branche `main`).
+
+- Un push sur `main` : tests (`ci.yml`) → image `ghcr.io/nizardv/vigil-app` (publique) → SSH sur le VPS (secrets
+  `VPS_HOST`, `VPS_USER`, `VPS_SSH_KEY`, `VPS_KNOWN_HOSTS`). La clé du CI est restreinte à `vigil-deploy.sh`, qui
+  retourne à la version précédente si `/health/` ne répond pas. Fichiers : `Dockerfile`, `infra/prod/`.
+- Sur le VPS : `/home/debian/vigil/` (compose, `vigil.env` en 0600 = secrets, `audit/`, `backups/`). Les fichiers de
+  `infra/prod/` sont copiés À LA MAIN sur le VPS : une modification du compose ou des scripts n'est pas déployée par le CI.
+- Sauvegarde PostgreSQL : minuteur systemd `vigil-backup.timer` (03:30 UTC, 14 jours). Pas de `cron` sur ce serveur.
+- Accès SSH : par clé uniquement (mots de passe désactivés, `/etc/ssh/sshd_config.d/10-vigil-hardening.conf`). Clés de
+  `debian` : PC, clé de secours (Bitwarden), clés des déploiements GitHub. Audit : utilisateur `vigil-audit`, clé restreinte.
+- Dependabot (écosystème `uv`) : les mises à jour patch/mineures sont fusionnées automatiquement si `quality` est vert ;
+  les majeures restent à relire. CodeQL et SonarCloud (analyse automatique de `main`) sont actifs.
+- À supprimer vers le 2026-12-08 : anciens conteneurs `vigil_*` arrêtés, leurs volumes, `/home/debian/vigil-infra`,
+  `/home/debian/vigil-old-backup-2026-11-08.sql.gz`.
+- Runbooks dans `docs/runbooks/`.
 
 ## Notion
 
