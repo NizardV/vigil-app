@@ -135,3 +135,12 @@ Supprime la ligne dans `/home/vigil-audit/.ssh/authorized_keys`, ou l'utilisateu
 
 Relis les changements (`git diff infra/audit/vigil-audit.sh`), puis refais l'étape 2b. Vigil refuse un rapport dont la
 version de schéma est inattendue.
+
+## En production (installé le 2026-11-08)
+
+Vigil tourne dans un conteneur **sur le VPS** : il se connecte à l'hôte par la passerelle Docker (`host.docker.internal`).
+La clé privée est dans `/home/debian/vigil/audit/key` (propriétaire uid 10001, mode 0400), montée en lecture seule dans le
+conteneur (`/run/audit`) avec `known_hosts`. Variables dans `vigil.env` : `VPS_AUDIT_HOST=host.docker.internal`,
+`VPS_AUDIT_USER=vigil-audit`, `VPS_AUDIT_SSH_KEY=/run/audit/key`, `VPS_AUDIT_KNOWN_HOSTS=/run/audit/known_hosts`,
+`VPS_AUDIT_TARGET=OVH`. Audit quotidien à 05:10 UTC ; à la main : `docker compose --env-file vigil.env exec web python
+manage.py audit_vps`. Mise à jour du script : le copier dans `/usr/local/bin/vigil-audit` (`sudo install -o root -g root -m 0755`).

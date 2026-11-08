@@ -156,7 +156,7 @@ section_certs() {
 
 section_backups() {
   OUT=null
-  local dirs=${VIGIL_BACKUP_DIRS:-/var/backups:/srv/backups:/opt/backups:/home/*/backups}
+  local dirs=${VIGIL_BACKUP_DIRS:-/var/backups:/srv/backups:/opt/backups:/home/*/backups:/home/*/*/backups}
   local newest="" epoch="" path="" d expanded names=() searched=()
   local IFS=:
   for d in $dirs; do searched+=("$d"); done

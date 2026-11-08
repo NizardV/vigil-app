@@ -12,6 +12,11 @@ x-app: &app
   environment:
     POSTGRES_HOST: db
     POSTGRES_PORT: "5432"
+  # Audit du VPS : le conteneur se connecte en SSH à l'hôte (clé dédiée, lecture seule : voir infra/audit/README.md).
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
+  volumes:
+    - ./audit:/run/audit:ro
   depends_on:
     db:
       condition: service_healthy
