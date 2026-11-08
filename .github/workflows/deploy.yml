@@ -16,6 +16,7 @@ env:
 jobs:
   tests:
     uses: ./.github/workflows/ci.yml
+    secrets: inherit
 
   build-and-deploy:
     needs: tests

@@ -15,6 +15,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "coverage>=7.17.2",
     "import-linter>=2.16",
     "ruff>=0.17.4",
 ]
@@ -50,3 +51,11 @@ modules = ["modules.projects", "modules.security", "modules.system", "modules.wa
 "**/tests.py" = ["S106"]            # mots de passe factices dans les tests
 "**/migrations/*.py" = ["E501"]     # fichiers generes
 "**/test_legacy.py" = ["E501", "S608"]  # jeux de donnees SQL statiques (pas de donnees externes dans les requetes)
+
+[tool.coverage.run]
+source = ["src"]
+branch = true
+omit = ["*/migrations/*", "*/test_*.py", "*/tests.py", "src/manage.py", "src/config/wsgi.py", "src/config/asgi.py"]
+
+[tool.coverage.xml]
+output = "coverage.xml"

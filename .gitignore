@@ -25,3 +25,5 @@ __pycache__/
 
 # Webhooks Discord locaux : SECRETS, ne jamais commiter
 /infra/dev/webhooks.env
+coverage.xml
+.coverage
