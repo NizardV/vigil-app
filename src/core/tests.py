@@ -105,3 +105,9 @@ class GitHubClientTests(SimpleTestCase):
         client = GitHubClient()
         with mock.patch.object(client, "paginate", return_value=repos):
             self.assertEqual([r["full_name"] for r in client.list_owner_repos("a")], ["a/b"])
+
+
+class RootRedirectTests(SimpleTestCase):
+    def test_la_racine_redirige_vers_l_admin(self):
+        response = self.client.get("/")
+        self.assertRedirects(response, "/admin/", fetch_redirect_response=False)
