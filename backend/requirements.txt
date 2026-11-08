@@ -40,4 +40,4 @@ resend==2.32.2
 
 # Auth middleware
 python-multipart==0.0.32
-email-validator>=2.0
+email-validator>=2.3.0
