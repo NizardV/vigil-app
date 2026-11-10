@@ -21,6 +21,7 @@ ALLOWED_HOSTS = [h for h in os.environ.get("DJANGO_ALLOWED_HOSTS", "localhost,12
 CSRF_TRUSTED_ORIGINS = [o for o in os.environ.get("DJANGO_CSRF_TRUSTED_ORIGINS", "").split(",") if o]
 
 INSTALLED_APPS = [
+    "unfold",  # thème de l'admin (ADR 0006) : doit précéder django.contrib.admin
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -53,7 +54,7 @@ ROOT_URLCONF = "config.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        "DIRS": [BASE_DIR / "config" / "templates"],  # surcharges de l'admin (prioritaires sur celles d'unfold)
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -104,6 +105,11 @@ STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 LOGIN_URL = "/admin/login/"
+# Après connexion sans « next » : l'admin (le formulaire de connexion d'unfold ne transmet pas de « next » par défaut).
+LOGIN_REDIRECT_URL = "admin:index"
+
+# --- Admin : thème django-unfold (ADR 0006) ; tableau de bord dans config/admin_dashboard.py ---
+from config.admin_theme import UNFOLD  # noqa: E402, F401
 
 # Durcissement : actif des que DEBUG est faux (verifie par `manage.py check --deploy`).
 if not DEBUG:

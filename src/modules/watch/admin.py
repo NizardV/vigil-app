@@ -1,5 +1,6 @@
 from django.contrib import admin, messages
 from django.db.models import FloatField, OuterRef, Subquery
+from unfold.admin import ModelAdmin, TabularInline
 
 from core.netfetch import FetchError
 from core.notifications import webhook_url
@@ -8,7 +9,7 @@ from . import feeds
 from .models import Analysis, Article, Digest, Feedback, Source, Theme
 
 
-class SourceInline(admin.TabularInline):
+class SourceInline(TabularInline):
     model = Source
     extra = 0
     fields = (
@@ -25,7 +26,7 @@ class SourceInline(admin.TabularInline):
 
 
 @admin.register(Theme)
-class ThemeAdmin(admin.ModelAdmin):
+class ThemeAdmin(ModelAdmin):
     list_display = ("name", "digest_days", "digest_hour", "min_score", "livraison", "last_digest_on", "digest_enabled")
     prepopulated_fields = {"slug": ("name",)}
     inlines = [SourceInline]
@@ -38,7 +39,7 @@ class ThemeAdmin(admin.ModelAdmin):
 
 
 @admin.register(Source)
-class SourceAdmin(admin.ModelAdmin):
+class SourceAdmin(ModelAdmin):
     list_display = ("__str__", "theme", "kind", "active", "last_fetched_at", "failures", "last_error")
     list_filter = ("theme", "kind", "active")
     search_fields = ("name", "url")
@@ -60,7 +61,7 @@ class SourceAdmin(admin.ModelAdmin):
 
 
 @admin.register(Article)
-class ArticleAdmin(admin.ModelAdmin):
+class ArticleAdmin(ModelAdmin):
     list_display = ("title", "theme", "score", "processed", "analysis_failed", "digested_at", "fetched_at")
     list_filter = ("source__theme", "processed", "analysis_failed")
     search_fields = ("title", "url")
@@ -90,13 +91,13 @@ class ArticleAdmin(admin.ModelAdmin):
 
 
 @admin.register(Feedback)
-class FeedbackAdmin(admin.ModelAdmin):
+class FeedbackAdmin(ModelAdmin):
     list_display = ("article", "rating", "author", "origin", "created_at")
     list_filter = ("rating", "origin")
 
 
 @admin.register(Digest)
-class DigestAdmin(admin.ModelAdmin):
+class DigestAdmin(ModelAdmin):
     list_display = ("theme", "sent_at", "article_count")
     readonly_fields = [f.name for f in Digest._meta.fields]
 

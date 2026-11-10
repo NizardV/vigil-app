@@ -5,6 +5,7 @@ requires-python = ">=3.13"
 dependencies = [
     "croniter>=6.2.4",
     "django>=6.1,<6.2",
+    "django-unfold>=0.110,<0.111",
     "feedparser>=6.0.14",
     "gunicorn>=26.2.0",
     "procrastinate[django]>=3.10.0",

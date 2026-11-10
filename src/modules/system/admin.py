@@ -1,10 +1,11 @@
 from django.contrib import admin
+from unfold.admin import ModelAdmin
 
 from .models import SentAlert
 
 
 @admin.register(SentAlert)
-class SentAlertAdmin(admin.ModelAdmin):
+class SentAlertAdmin(ModelAdmin):
     list_display = ("key", "kind", "sent_at")
     list_filter = ("kind",)
     search_fields = ("key",)

@@ -13,6 +13,7 @@ Priorités : **stabilité, maintenabilité, sécurité**.
 - [ADR 0002](../docs/adr/0002-django-comme-framework.md) — **Django** (remplace FastAPI + Streamlit)
 - [ADR 0003](../docs/adr/0003-procrastinate-pour-les-taches-de-fond.md) — **Procrastinate** (tâches de fond, PostgreSQL requis)
 - [ADR 0004](../docs/adr/0004-frontend-progressif-admin-puis-sveltekit-spa.md) — admin Django, puis **SvelteKit en SPA** statique
+- [ADR 0006](../docs/adr/0006-theme-admin-django-unfold.md) — thème de l'admin **django-unfold** (tableau de bord, pastilles)
 
 Plan et état de la migration : `docs/architecture.md`.
 
@@ -75,7 +76,8 @@ PYTHONPATH=src uv run lint-imports             # frontières entre modules
 ## Stack
 
 Django 6.1 · Python 3.13 · PostgreSQL 16 (sans pgvector, ADR 0005) partout (dev, tests, prod) ·
-`uv` · ruff · import-linter · Docker Compose + NGINX · Gemini · Discord · Notion API · GitHub API.
+`uv` · ruff · import-linter · Docker Compose + NGINX · Gemini · Discord · Notion API · GitHub API ·
+django-unfold (admin).
 
 ## Conventions
 
@@ -129,6 +131,10 @@ ne marque pas un projet « Terminé » sans vérifier.
   d'un paramètre (il ne serait pas remplaçable par `mock.patch`) — résoudre à l'appel.
 - Django 6 : `django.utils.timezone.utc` n'existe plus, utiliser `datetime.UTC`.
 - Ne nomme pas une méthode de test `client` (masque `self.client` de Django).
+- Admin (unfold, ADR 0006) : tout `ModelAdmin` hérite de `unfold.admin.ModelAdmin` ; pastilles via
+  `@display(label={valeur: "danger"|"warning"|"info"|"success"})` en renvoyant `(valeur, libellé)`. Dans les gabarits,
+  n'utiliser que des classes Tailwind présentes dans le CSS d'unfold (il est précompilé). Ses graphiques dessinent des
+  barres de 4 px par défaut : passer `maxBarThickness` dans la série.
 - Style : `ruff`, lignes de 120 caractères.
 
 - **Les horaires des tâches planifiées sont en UTC** (Procrastinate), pas à l'heure de Paris : 05:00 UTC = 06:00
