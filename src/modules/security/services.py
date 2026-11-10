@@ -89,11 +89,37 @@ def run_github_audit(client: GitHubClient | None = None) -> dict:
     outcomes = audit_github(client, settings.GITHUB_OWNER)
     for outcome in outcomes:
         record_outcome(outcome)
+    rate_limited = any(o.rate_limited for o in outcomes)
+    retired = 0
+    # Un audit complet couvre tous les dépôts actifs : les autres ont été archivés ou supprimés.
+    # Audit interrompu (quota) ou vide (listage anormal) : on ne sait pas, on ne retire rien.
+    if outcomes and not rate_limited:
+        retired = retire_github_targets({o.target for o in outcomes})
     return {
         "checks": len(outcomes),
         "by_status": dict(Counter(o.status for o in outcomes)),
-        "rate_limited": any(o.rate_limited for o in outcomes),
+        "rate_limited": rate_limited,
+        "retired": retired,
     }
+
+
+@transaction.atomic
+def retire_github_targets(active_targets: set[str]) -> int:
+    """Résout les constats GitHub des dépôts qui ne sont plus audités (archivés ou supprimés).
+
+    Sans cela, ils resteraient ouverts indéfiniment : un constat n'est résolu que lorsque son
+    contrôle aboutit de nouveau, ce qui n'arrive plus pour un dépôt sorti de l'audit.
+    Leurs résultats de contrôle sont aussi retirés de la couverture. S'il revient dans l'audit
+    (désarchivé), ses constats encore présents se rouvrent normalement.
+    """
+    now = timezone.now()
+    retired = (
+        Finding.objects.filter(source="github", status=Finding.Status.OPEN)
+        .exclude(target__in=active_targets)
+        .update(status=Finding.Status.RESOLVED, resolved_at=now)
+    )
+    CheckResult.objects.filter(source="github").exclude(target__in=active_targets).delete()
+    return retired
 
 
 def run_vps_audit(*, fetch=None, report: dict | None = None) -> dict:

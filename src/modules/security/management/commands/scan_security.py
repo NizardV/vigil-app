@@ -16,6 +16,8 @@ class Command(BaseCommand):
         self.stdout.write(f"{run['checks']} contrôles exécutés : {run['by_status']}")
         if run["rate_limited"]:
             self.stdout.write(self.style.WARNING("Quota GitHub épuisé : audit incomplet."))
+        if run.get("retired"):
+            self.stdout.write(f"{run['retired']} constat(s) résolu(s) : dépôts archivés ou supprimés.")
         report = summary()
         self.stdout.write(f"Constats ouverts : {report['open_total']} {report['open_by_severity']}")
         if report["not_covered"]:

@@ -72,8 +72,10 @@ jours à 05:00 UTC (après la synchro projets de 04:00).
 
 ## Limites connues du MVP
 
-- Un dépôt supprimé ou archivé garde ses constats ouverts (pas de résolution automatique des cibles
-  disparues, pour ne pas résoudre à tort sur une liste partielle).
+- Un dépôt supprimé ou archivé voit ses constats ouverts résolus (et ses contrôles retirés de la
+  couverture) à la fin d'un audit GitHub **complet** : jamais si le quota a interrompu l'audit ou si
+  aucun dépôt n'a été audité. Limite : si le jeton perdait l'accès aux dépôts privés (listage public
+  de secours), leurs constats seraient résolus, puis rouverts et re-notifiés au retour de l'accès.
 - Pas encore de notification ni de synchro Notion.
 
 ## Critères d'acceptation (MVP)

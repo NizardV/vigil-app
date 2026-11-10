@@ -159,6 +159,49 @@ class CollectorTests(TestCase):
         self.assertTrue(outcomes[0].rate_limited)
 
 
+class RetireTests(TestCase):
+    """Dépôts sortis de l'audit (archivés, supprimés) : leurs constats ne restent pas ouverts."""
+
+    def setUp(self):
+        record_outcome(outcome())  # NizardV/demo : un constat ouvert
+        record_outcome(CheckOutcome("github", "NizardV/old", "dependabot", FINDINGS, [Observation("9", 3, "x")]))
+
+    def run_audit(self, repos):
+        from .services import run_github_audit
+
+        # Contrôles indisponibles sur les dépôts actifs : seul compte ici le périmètre de l'audit.
+        return run_github_audit(FakeClient({"/repos": GitHubError(404, "Not Found")}, repos=repos))
+
+    def test_depot_archive_ou_supprime_est_resolu_et_sort_de_la_couverture(self):
+        run = self.run_audit([REPO, {**REPO, "full_name": "NizardV/old", "archived": True}])
+        old = Finding.objects.get(target="NizardV/old")
+        self.assertEqual((old.status, run["retired"]), (Finding.Status.RESOLVED, 1))
+        self.assertIsNotNone(old.resolved_at)
+        self.assertFalse(CheckResult.objects.filter(target="NizardV/old").exists())
+
+    def test_constat_ignore_reste_ignore(self):
+        Finding.objects.filter(target="NizardV/old").update(status=Finding.Status.IGNORED)
+        self.run_audit([REPO])
+        self.assertEqual(Finding.objects.get(target="NizardV/old").status, Finding.Status.IGNORED)
+
+    def test_audit_vide_ne_retire_rien(self):
+        self.assertEqual(self.run_audit([])["retired"], 0)
+        self.assertEqual(Finding.objects.get(target="NizardV/old").status, Finding.Status.OPEN)
+
+    def test_audit_interrompu_par_le_quota_ne_retire_rien(self):
+        from .services import run_github_audit
+
+        limited = GitHubError(403, "API rate limit exceeded", rate_limited=True)
+        run = run_github_audit(FakeClient({"/repos": limited}, repos=[REPO]))
+        self.assertEqual((run["rate_limited"], run["retired"]), (True, 0))
+        self.assertEqual(Finding.objects.get(target="NizardV/old").status, Finding.Status.OPEN)
+
+    def test_autres_sources_intactes(self):
+        record_outcome(CheckOutcome("vps", "OVH", "vps_ssh", FINDINGS, [Observation("root", 3, "root")]))
+        self.run_audit([REPO])
+        self.assertEqual(Finding.objects.get(source="vps").status, Finding.Status.OPEN)
+
+
 class CommandTests(TestCase):
     def test_commande_affiche_un_resume(self):
         run = {"checks": 4, "by_status": {"ok": 4}, "rate_limited": False}
