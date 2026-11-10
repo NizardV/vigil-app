@@ -1,0 +1,40 @@
+{% extends "admin/base.html" %}
+{% load i18n unfold %}
+
+{% block title %}Tableau de bord | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block branding %}
+    {% include "unfold/helpers/site_branding.html" %}
+{% endblock %}
+
+{% block content %}
+    {% component "unfold/components/container.html" %}
+        {% component "unfold/components/title.html" %}Sécurité{% endcomponent %}
+
+        <div class="flex flex-col gap-6 mb-8 md:flex-row">
+            {% for kpi in kpis %}
+                {% component "unfold/components/card.html" with href=kpi.href class="lg:w-1/3" %}
+                    {% component "unfold/components/text.html" %}{{ kpi.title }}{% endcomponent %}
+                    <div class="font-semibold text-3xl mt-2 {% if kpi.alert %}text-red-600 dark:text-red-400{% else %}text-important{% endif %}">
+                        {{ kpi.value }}
+                    </div>
+                {% endcomponent %}
+            {% endfor %}
+        </div>
+
+        {% if has_findings %}
+            <div class="flex flex-col gap-6 mb-8 lg:flex-row">
+                {% component "unfold/components/card.html" with title="Constats ouverts par gravité" class="lg:w-1/2" %}
+                    {% component "unfold/components/chart/bar.html" with data=severity_chart height=260 %}{% endcomponent %}
+                {% endcomponent %}
+                {% component "unfold/components/card.html" with title="Constats ouverts par source" class="lg:w-1/2" %}
+                    {% component "unfold/components/chart/bar.html" with data=source_chart height=260 %}{% endcomponent %}
+                {% endcomponent %}
+            </div>
+        {% else %}
+            {% component "unfold/components/card.html" %}
+                {% component "unfold/components/text.html" %}Aucun constat ouvert.{% endcomponent %}
+            {% endcomponent %}
+        {% endif %}
+    {% endcomponent %}
+{% endblock %}

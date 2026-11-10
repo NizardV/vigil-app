@@ -163,6 +163,7 @@ def summary() -> dict:
     coverage = Counter(CheckResult.objects.values_list("status", flat=True))
     return {
         "open_by_severity": {Finding.Severity(s).label: by_severity[s] for s in sorted(by_severity, reverse=True)},
+        "open_by_source": dict(Counter(open_findings.values_list("source", flat=True)).most_common()),
         "open_total": sum(by_severity.values()),
         "coverage": dict(coverage),
         "not_covered": coverage[CheckResult.Status.UNAVAILABLE] + coverage[CheckResult.Status.ERROR],
