@@ -35,6 +35,8 @@ from core import notifications
 log = logging.getLogger(__name__)
 
 BACKUP_CODES = 10
+# Préfixe d'une commande de management sur le VPS (le conteneur a pour répertoire de travail /app/src).
+SERVER_COMMAND = "cd ~/vigil && docker compose --env-file vigil.env exec web python manage.py"
 # Chemins accessibles sans second facteur, même connecté : santé, webhooks (signés), fichiers statiques, et les
 # pages nécessaires pour s'authentifier ou se déconnecter.
 EXEMPT_PREFIXES = ("/health/", "/watch/discord/", "/static/")
@@ -85,7 +87,7 @@ if user_locked_out is not None:
             f"Trop d'échecs de connexion depuis **{notifications.escape(ip_address or '?')}** "
             f"(identifiant tenté : `{notifications.escape(username or '?', 64)}`). "
             f"Blocage pendant {settings.AXES_COOLOFF_TIME} h.\n"
-            "Si c'est toi : `python src/manage.py axes_reset_ip <ip>` sur le serveur.",
+            f"Si c'est toi, sur le serveur : `{SERVER_COMMAND} axes_reset_ip <ip>`",
         )
 
 
@@ -205,7 +207,7 @@ def setup(request: HttpRequest) -> HttpResponse:
                 "🛡️ Nouvel appareil de double authentification",
                 f"Un appareil 2FA vient d'être enrôlé pour **{notifications.escape(user.get_username())}** "
                 f"depuis {notifications.escape(client_ip(request))}. Si ce n'est pas toi : change le mot de passe "
-                "et lance `python src/manage.py reset_2fa` sur le serveur.",
+                f"et lance sur le serveur : `{SERVER_COMMAND} reset_2fa <compte>`",
                 color=0xF97316,
             )
             return _page(request, "core/two_factor_codes.html", codes=codes, title="Codes de secours")
