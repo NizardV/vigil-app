@@ -33,6 +33,7 @@ INSTALLED_APPS = [
     "django_otp",
     "django_otp.plugins.otp_totp",
     "django_otp.plugins.otp_static",
+    "django_otp_webauthn",  # passkeys, en second facteur (ADR 0007)
     "axes",
     # Socle puis modules metier
     "procrastinate.contrib.django",
@@ -120,6 +121,14 @@ LOGIN_REDIRECT_URL = "admin:index"
 # Double authentification obligatoire pour toute session connectée (core/two_factor.py). Désactivable en dev local.
 TWO_FACTOR_REQUIRED = env_bool("VIGIL_TWO_FACTOR_REQUIRED", True)
 OTP_TOTP_ISSUER = "Vigil"
+# Passkeys : second facteur au même titre que le code TOTP, jamais à la place du mot de passe.
+OTP_WEBAUTHN_ALLOW_PASSWORDLESS_LOGIN = False
+OTP_WEBAUTHN_RP_NAME = "Vigil"
+# Domaine des passkeys : le premier hôte autorisé (vigil.nizard.dev en prod) ; une passkey ne sert que sur ce domaine.
+OTP_WEBAUTHN_RP_ID = os.environ.get("VIGIL_WEBAUTHN_RP_ID") or (ALLOWED_HOSTS[0] if ALLOWED_HOSTS else "localhost")
+OTP_WEBAUTHN_ALLOWED_ORIGINS = [
+    o for o in os.environ.get("VIGIL_WEBAUTHN_ORIGINS", f"https://{OTP_WEBAUTHN_RP_ID}").split(",") if o
+]
 # Blocage après échecs de connexion (django-axes) : 5 échecs depuis une même IP -> 1 h de blocage + alerte Discord.
 AUTHENTICATION_BACKENDS = [
     "axes.backends.AxesStandaloneBackend",  # doit rester en premier

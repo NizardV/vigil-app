@@ -1,5 +1,5 @@
 {% extends "unfold/layouts/unauthenticated.html" %}
-{% load unfold %}
+{% load unfold otp_webauthn %}
 
 {% block title %}{{ title }} | {{ site_title }}{% endblock %}
 
@@ -14,6 +14,18 @@
         <div class="flex flex-col gap-4 mb-8 *:mb-0">
             {% include "unfold/helpers/messages/errornote.html" with errors=form.errors %}
         </div>
+    {% endif %}
+
+    {% if has_passkey %}
+        <span id="passkey-verification-placeholder"></span>
+        <template id="passkey-verification-available-template">
+            <button type="button" id="passkey-verification-button"
+                    class="bg-primary-600 cursor-pointer font-medium mb-2 px-3 py-2 rounded-default text-white w-full">
+                Utiliser une passkey
+            </button>
+            <p id="passkey-verification-status-message" class="mb-4 text-sm"></p>
+        </template>
+        <p class="mb-6 text-center text-sm">ou</p>
     {% endif %}
 
     <form method="post">
@@ -34,4 +46,6 @@
             Se déconnecter
         {% endcomponent %}
     </form>
+
+    {% if has_passkey %}{% render_otp_webauthn_auth_scripts %}{% endif %}
 {% endblock %}

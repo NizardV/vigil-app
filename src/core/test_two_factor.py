@@ -203,3 +203,64 @@ class ResetCommandTests(TestCase):
 
         with self.assertRaises(CommandError):
             call_command("reset_2fa", "personne")
+
+
+def passkey(user):
+    from django_otp_webauthn.models import WebAuthnCredential
+
+    return WebAuthnCredential.objects.create(
+        user=user, name="Téléphone", credential_id=b"cred-id", public_key=b"public-key", confirmed=True
+    )
+
+
+@override_settings(DISCORD_WEBHOOKS=WEBHOOKS)
+@mock.patch("core.notifications.send_discord")
+class PasskeyTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_superuser("root", "root@example.com", PASSWORD)
+
+    def test_page_passkeys_exige_une_session_validee(self, send):
+        TOTPDevice.objects.create(user=self.user, confirmed=True)
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("two_factor_passkeys"))
+        self.assertTrue(response["Location"].startswith(reverse("two_factor_verify")))
+
+    def test_enregistrement_impossible_sans_second_facteur(self, send):
+        """Avec le seul mot de passe, on ne peut pas ajouter sa propre passkey au compte."""
+        TOTPDevice.objects.create(user=self.user, confirmed=True)
+        self.client.force_login(self.user)
+        response = self.client.post(reverse("otp_webauthn:credential-registration-begin"))
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(response["Location"].startswith(reverse("two_factor_verify")))
+
+    def test_authentification_par_passkey_accessible_avant_le_second_facteur(self, send):
+        TOTPDevice.objects.create(user=self.user, confirmed=True)
+        passkey(self.user)
+        self.client.force_login(self.user)
+        response = self.client.post(reverse("otp_webauthn:credential-authentication-begin"))
+        self.assertEqual(response.status_code, 200)  # options WebAuthn, pas de redirection vers la 2FA
+        self.assertIn("challenge", response.json())
+
+    def test_page_passkeys_avec_session_validee(self, send):
+        login_verified(self.client, self.user)
+        passkey(self.user)
+        response = self.client.get(reverse("two_factor_passkeys"))
+        self.assertContains(response, "passkey-register-button")
+        self.assertContains(response, "Téléphone")
+
+    def test_bouton_passkey_sur_la_verification_seulement_si_le_compte_en_a_une(self, send):
+        TOTPDevice.objects.create(user=self.user, confirmed=True)
+        self.client.force_login(self.user)
+        self.assertNotContains(self.client.get(reverse("two_factor_verify")), "passkey-verification-button")
+        passkey(self.user)
+        self.assertContains(self.client.get(reverse("two_factor_verify")), "passkey-verification-button")
+
+    def test_alerte_a_l_ajout_d_une_passkey(self, send):
+        passkey(self.user)
+        self.assertIn("Nouvelle passkey", send.call_args.args[1]["embeds"][0]["title"])
+
+    def test_passkey_supprimable_dans_l_admin(self, send):
+        login_verified(self.client, self.user)
+        credential = passkey(self.user)
+        url = reverse("admin:django_otp_webauthn_webauthncredential_delete", args=[credential.pk])
+        self.assertEqual(self.client.get(url).status_code, 200)
