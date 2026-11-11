@@ -96,6 +96,14 @@ UNFOLD = {
                     _link("Groupes", "group", "admin:auth_group_changelist"),
                 ],
             },
+            {
+                "title": "Accès",
+                "collapsible": True,
+                "items": [
+                    _link("Tentatives de connexion", "lock_person", "admin:axes_accessattempt_changelist"),
+                    _link("Appareils 2FA", "phonelink_lock", "admin:otp_totp_totpdevice_changelist"),
+                ],
+            },
         ],
     },
 }

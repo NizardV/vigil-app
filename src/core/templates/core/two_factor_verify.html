@@ -1,0 +1,37 @@
+{% extends "unfold/layouts/unauthenticated.html" %}
+{% load unfold %}
+
+{% block title %}{{ title }} | {{ site_title }}{% endblock %}
+
+{% block content %}
+    {% include "unfold/helpers/unauthenticated_title.html" with title="Double authentification" subtitle=site_title %}
+
+    <p class="mb-6 text-sm">
+        Saisis le code à 6 chiffres de ton application d'authentification, ou l'un de tes codes de secours.
+    </p>
+
+    {% if form.errors %}
+        <div class="flex flex-col gap-4 mb-8 *:mb-0">
+            {% include "unfold/helpers/messages/errornote.html" with errors=form.errors %}
+        </div>
+    {% endif %}
+
+    <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ next }}">
+        {% include "unfold/helpers/field.html" with field=form.token %}
+
+        <div class="flex flex-col gap-3 mt-6">
+            {% component "unfold/components/button.html" with submit=1 variant="primary" class="w-full" %}
+                Valider
+            {% endcomponent %}
+        </div>
+    </form>
+
+    <form method="post" action="{% url 'admin:logout' %}" class="mt-3">
+        {% csrf_token %}
+        {% component "unfold/components/button.html" with submit=1 variant="secondary" class="w-full" %}
+            Se déconnecter
+        {% endcomponent %}
+    </form>
+{% endblock %}

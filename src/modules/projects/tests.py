@@ -4,6 +4,8 @@ from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
 
+from core.testing import login_verified
+
 from .models import TrackedRepo
 from .services import sync_repos
 
@@ -35,8 +37,7 @@ class ProjectsTests(TestCase):
         self.assertEqual(resp.status_code, 302)
 
     def test_liste_connecte(self):
-        User.objects.create_user("n", password="p")
-        self.client.login(username="n", password="p")
+        login_verified(self.client, User.objects.create_user("n", password="p"))
         self.assertEqual(self.client.get(reverse("repo_list")).status_code, 200)
 
 
