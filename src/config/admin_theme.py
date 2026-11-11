@@ -90,6 +90,7 @@ UNFOLD = {
                 "title": "Système",
                 "collapsible": True,
                 "items": [
+                    _link("Sites surveillés", "monitor_heart", "admin:system_sitestatus_changelist"),
                     _link("Tâches de fond", "schedule", "admin:procrastinate_procrastinatejob_changelist"),
                     _link("Alertes envoyées", "notifications", "admin:system_sentalert_changelist"),
                     _link("Utilisateurs", "person", "admin:auth_user_changelist"),

@@ -23,3 +23,12 @@ def health_check(timestamp: int) -> dict:
     if result["status"] == "error":
         raise RuntimeError(f"Alerte système non envoyée : {result['error']}")
     return {**result, "heartbeat": services.send_heartbeat()}
+
+
+@app.periodic(cron="*/5 * * * *")
+@app.task(name="system.uptime_check", queueing_lock="system.uptime_check")
+def uptime_check(timestamp: int) -> dict:
+    """Disponibilité des sites hébergés à côté de Vigil (VIGIL_UPTIME_SITES) ; alerte #système aux changements."""
+    from .uptime import check_sites
+
+    return check_sites()

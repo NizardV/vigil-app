@@ -185,6 +185,18 @@ PROJECTS_IGNORED_COMMIT_PATTERNS = ["deploy to github pages"]
 # L'URL contient souvent un identifiant secret : variable d'environnement uniquement.
 VIGIL_HEARTBEAT_URL = os.environ.get("VIGIL_HEARTBEAT_URL", "")
 
+# --- Module system : sites surveillés (disponibilité toutes les 5 min, alerte #système) ---
+# Format : « Nom=https://url,Nom=https://url ». Vide = aucune surveillance. Vigil lui-même est couvert par le signal
+# de vie externe (VIGIL_HEARTBEAT_URL), pas par cette liste.
+_DEFAULT_UPTIME_SITES = (
+    "Portfolio=https://nizard.dev,Cyna (site)=https://cyna.nizard.dev,Cyna (API)=https://api.cyna.nizard.dev/health"
+)
+VIGIL_UPTIME_SITES = [
+    tuple(item.split("=", 1))
+    for item in os.environ.get("VIGIL_UPTIME_SITES", _DEFAULT_UPTIME_SITES).split(",")
+    if "=" in item
+]
+
 # --- Notion (synchro du module security). Jeton = SECRET : variable d'environnement uniquement. ---
 # Créer une intégration interne sur notion.so/my-integrations, puis PARTAGER la page cible avec elle.
 NOTION_API_KEY = os.environ.get("NOTION_API_KEY", "")
