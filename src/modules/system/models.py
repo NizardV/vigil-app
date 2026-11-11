@@ -6,12 +6,14 @@ class SentAlert(models.Model):
     """Problème système déjà signalé : garantit qu'un même problème n'est notifié qu'une fois."""
 
     key = models.CharField(
-        max_length=200, unique=True
+        verbose_name="clé", max_length=200, unique=True
     )  # ex. « failed:42 », « overdue:security.audit_github:2026110805 »
-    kind = models.CharField(max_length=20)
-    sent_at = models.DateTimeField(default=timezone.now)
+    kind = models.CharField(verbose_name="type", max_length=20)
+    sent_at = models.DateTimeField(verbose_name="envoyée le", default=timezone.now)
 
     class Meta:
+        verbose_name = "alerte envoyée"
+        verbose_name_plural = "alertes envoyées"
         ordering = ["-sent_at"]
 
     def __str__(self) -> str:
