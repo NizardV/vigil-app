@@ -1,7 +1,7 @@
 """Supprime les appareils de double authentification d'un compte (téléphone perdu, appareil compromis).
 
 Seul moyen d'enrôler un nouvel appareil une fois la 2FA active : il faut un accès au serveur.
-    docker compose --env-file vigil.env exec web python src/manage.py reset_2fa <identifiant>
+    cd ~/vigil && docker compose --env-file vigil.env exec web python manage.py reset_2fa <identifiant>
 """
 
 from django.contrib.auth import get_user_model

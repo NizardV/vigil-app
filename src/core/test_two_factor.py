@@ -170,7 +170,9 @@ class LockoutTests(TestCase):
         for _ in range(3):
             self.login("faux")  # l'attaquant insiste : pas de nouvelle alerte
         send.assert_called_once()
-        self.assertIn("203.0.113.7", send.call_args.args[1]["embeds"][0]["description"])
+        description = send.call_args.args[1]["embeds"][0]["description"]
+        self.assertIn("203.0.113.7", description)
+        self.assertIn("exec web python manage.py axes_reset_ip", description)  # commande valable dans le conteneur
 
     def test_blocage_par_ip_seulement(self, send):
         """Un attaquant ne peut pas bloquer le propriétaire du compte depuis une autre adresse."""
