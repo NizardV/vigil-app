@@ -1,0 +1,22 @@
+{% extends "unfold/layouts/unauthenticated.html" %}
+{% load unfold %}
+
+{% block title %}{{ title }} | {{ site_title }}{% endblock %}
+
+{% block content %}
+    {% include "unfold/helpers/unauthenticated_title.html" with title="Codes de secours" subtitle=site_title %}
+
+    <p class="mb-4 text-sm">
+        La double authentification est active. Range ces codes dans ton gestionnaire de mots de passe :
+        chacun permet <strong>une</strong> connexion si tu n'as plus ton téléphone.
+        <strong>Ils ne seront plus jamais affichés.</strong>
+    </p>
+
+    <ul class="gap-2 grid grid-cols-2 mb-6 font-mono text-sm">
+        {% for code in codes %}<li>{{ code }}</li>{% endfor %}
+    </ul>
+
+    {% component "unfold/components/button.html" with href=next variant="primary" class="w-full" %}
+        J'ai noté mes codes, continuer
+    {% endcomponent %}
+{% endblock %}

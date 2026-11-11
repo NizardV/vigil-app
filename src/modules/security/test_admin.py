@@ -4,6 +4,8 @@ from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
 
+from core.testing import login_verified
+
 from .models import CheckResult, Finding
 from .outcomes import FINDINGS, UNAVAILABLE, CheckOutcome, Observation
 from .services import record_outcome, summary
@@ -16,7 +18,7 @@ def audit(target="NizardV/demo", source="github", severities=(4, 3, 2), status=F
 
 class DashboardTests(TestCase):
     def setUp(self):
-        self.client.force_login(User.objects.create_superuser("root", "root@example.com", "x" * 16))
+        login_verified(self.client, User.objects.create_superuser("root", "root@example.com", "x" * 16))
 
     def test_sans_constat(self):
         response = self.client.get(reverse("admin:index"))
@@ -50,7 +52,7 @@ class DashboardTests(TestCase):
 
 class BadgeTests(TestCase):
     def setUp(self):
-        self.client.force_login(User.objects.create_superuser("root", "root@example.com", "x" * 16))
+        login_verified(self.client, User.objects.create_superuser("root", "root@example.com", "x" * 16))
 
     def test_gravite_et_statut_en_pastilles(self):
         audit(severities=(4,))

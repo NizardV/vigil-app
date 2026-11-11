@@ -1,0 +1,36 @@
+{% extends "unfold/layouts/unauthenticated.html" %}
+{% load unfold %}
+
+{% block title %}{{ title }} | {{ site_title }}{% endblock %}
+
+{% block content %}
+    {% include "unfold/helpers/unauthenticated_title.html" with title="Activer la double authentification" subtitle=site_title %}
+
+    <ol class="flex flex-col gap-2 list-decimal mb-6 pl-5 text-sm">
+        <li>Ouvre ton application d'authentification (Bitwarden, Aegis, Google Authenticator…).</li>
+        <li>Scanne ce QR code, ou saisis la clé à la main.</li>
+        <li>Entre le code à 6 chiffres affiché pour confirmer.</li>
+    </ol>
+
+    <div class="bg-white flex justify-center mb-4 p-4 rounded-default">{{ qr }}</div>
+
+    <p class="mb-6 text-xs break-all">Clé : <code>{{ secret }}</code></p>
+
+    {% if form.errors %}
+        <div class="flex flex-col gap-4 mb-8 *:mb-0">
+            {% include "unfold/helpers/messages/errornote.html" with errors=form.errors %}
+        </div>
+    {% endif %}
+
+    <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ next }}">
+        {% include "unfold/helpers/field.html" with field=form.token %}
+
+        <div class="flex flex-col gap-3 mt-6">
+            {% component "unfold/components/button.html" with submit=1 variant="primary" class="w-full" %}
+                Confirmer
+            {% endcomponent %}
+        </div>
+    </form>
+{% endblock %}

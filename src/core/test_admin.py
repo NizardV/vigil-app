@@ -6,11 +6,13 @@ from django.contrib.staticfiles import finders
 from django.test import TestCase
 from django.urls import reverse
 
+from core.testing import login_verified
+
 
 class AdminThemeTests(TestCase):
     def setUp(self):
         self.admin_user = User.objects.create_superuser("root", "root@example.com", "x" * 16)
-        self.client.force_login(self.admin_user)
+        login_verified(self.client, self.admin_user)
 
     def test_tableau_de_bord(self):
         response = self.client.get(reverse("admin:index"))
@@ -38,7 +40,7 @@ class AdminThemeTests(TestCase):
         """Le formulaire d'unfold n'envoie pas de « next » : sans LOGIN_REDIRECT_URL, on finissait sur une 404."""
         self.client.logout()
         response = self.client.post(reverse("admin:login"), {"username": "root", "password": "x" * 16})
-        self.assertRedirects(response, reverse("admin:index"))
+        self.assertRedirects(response, reverse("admin:index"), fetch_redirect_response=False)
 
     def test_connexion_requise(self):
         self.client.logout()

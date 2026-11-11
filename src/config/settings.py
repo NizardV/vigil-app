@@ -29,6 +29,11 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django.contrib.postgres",  # ArrayField et recherche plein texte (module watch)
+    # Authentification renforcée (ADR 0007) : double authentification TOTP, blocage après échecs
+    "django_otp",
+    "django_otp.plugins.otp_totp",
+    "django_otp.plugins.otp_static",
+    "axes",
     # Socle puis modules metier
     "procrastinate.contrib.django",
     "core",
@@ -45,8 +50,11 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django_otp.middleware.OTPMiddleware",  # request.user.is_verified()
+    "core.two_factor.Require2FAMiddleware",  # second facteur obligatoire pour toute session connectée
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "axes.middleware.AxesMiddleware",  # doit rester en dernier
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -107,6 +115,24 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 LOGIN_URL = "/admin/login/"
 # Après connexion sans « next » : l'admin (le formulaire de connexion d'unfold ne transmet pas de « next » par défaut).
 LOGIN_REDIRECT_URL = "admin:index"
+
+# --- Authentification renforcée (ADR 0007) ---
+# Double authentification obligatoire pour toute session connectée (core/two_factor.py). Désactivable en dev local.
+TWO_FACTOR_REQUIRED = env_bool("VIGIL_TWO_FACTOR_REQUIRED", True)
+OTP_TOTP_ISSUER = "Vigil"
+# Blocage après échecs de connexion (django-axes) : 5 échecs depuis une même IP -> 1 h de blocage + alerte Discord.
+AUTHENTICATION_BACKENDS = [
+    "axes.backends.AxesStandaloneBackend",  # doit rester en premier
+    "django.contrib.auth.backends.ModelBackend",
+]
+AXES_FAILURE_LIMIT = 5
+AXES_COOLOFF_TIME = 1  # heures
+AXES_LOCKOUT_PARAMETERS = ["ip_address"]  # par IP : un tiers ne peut pas bloquer le compte depuis ailleurs
+AXES_RESET_ON_SUCCESS = True
+AXES_CLIENT_IP_CALLABLE = "core.two_factor.client_ip"  # IP réelle derrière NGINX (dernière entrée X-Forwarded-For)
+AXES_SENSITIVE_PARAMETERS = ["password", "token"]
+# Session : 12 h maximum, puis reconnexion complète (mot de passe + second facteur).
+SESSION_COOKIE_AGE = 12 * 3600
 
 # --- Admin : thème django-unfold (ADR 0006) ; tableau de bord dans config/admin_dashboard.py ---
 from config.admin_theme import UNFOLD  # noqa: E402, F401
