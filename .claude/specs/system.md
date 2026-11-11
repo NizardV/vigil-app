@@ -34,10 +34,23 @@ Le signal n'est **pas** envoyé si la vérification échoue : un faux signal de 
 Configuration recommandée côté service externe : période 15 min, tolérance 20–30 min, notification par e-mail
 ou autre canal **indépendant de Discord et du VPS**.
 
+## Disponibilité des sites hébergés (`system.uptime_check`, toutes les 5 minutes)
+
+Ajouté le 2026-11-11 après une panne de l'API Cyna (base arrêtée du 08 au 10/11) restée invisible deux jours.
+Le signal de vie externe voit le **VPS ou Vigil** s'arrêter ; ce contrôle voit une **application** en panne sur un
+VPS qui tourne. Les deux se complètent.
+
+- Sites : `VIGIL_UPTIME_SITES` (« Nom=https://url,… » ; par défaut Portfolio, Cyna site, Cyna API `/health`, qui
+  teste aussi la base). Vigil lui-même n'y est pas : c'est le rôle du signal de vie externe.
+- Un site est en panne s'il ne répond pas **200** (après redirections) en 10 s. Requête via `core.netfetch` (adresses
+  publiques uniquement).
+- Alerte #système après **2 échecs d'affilée** (un raté isolé n'alerte pas), puis **une alerte au retour** avec la
+  durée de la panne. Une alerte non envoyée n'est pas marquée : retentée au passage suivant.
+- État visible dans l'admin : Système › Sites surveillés. Commande : `manage.py check_sites`.
+
 ## Hors périmètre (volontairement)
 
 - Santé de l'infrastructure (RAM, disque, conteneurs, certificats) : module `security`, audit du VPS.
-- Surveillance de la disponibilité des sites publics (nizard.dev…) : à confier à un service externe de disponibilité.
 - Message « résolu » quand un problème disparaît : non prévu pour l'instant.
 
 ## Critères d'acceptation (vérifiés par les tests)
