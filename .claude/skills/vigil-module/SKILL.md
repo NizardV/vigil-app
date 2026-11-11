@@ -36,7 +36,7 @@ Référence vivante : `src/modules/projects/`.
 8. Admin : `list_display`, `list_filter`, `search_fields` ; actions pour les opérations manuelles.
 9. Tests dans le module (au moins : service nominal, idempotence, accès refusé sans connexion).
 10. Contrôles : `check`, `test`, `ruff check`, `PYTHONPATH=src uv run lint-imports` — tout doit passer.
-11. Mets à jour `.env.example`, `docs/architecture.md` et la page Notion du projet.
+11. Mets à jour `infra/prod/vigil.env.example`, `docs/architecture.md` et la page Notion du projet.
 
 ## Communiquer avec un autre module
 

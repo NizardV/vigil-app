@@ -68,7 +68,7 @@ PYTHONPATH=src uv run lint-imports             # frontières entre modules
    ses migrations, son admin, ses tests. Les tables ont le préfixe d'app (`projects_trackedrepo`).
 4. **Logique métier dans `services.py`**, jamais dans les vues, l'admin ou les commandes.
 5. **Les tâches de fond sont des fonctions de service** enveloppées par Procrastinate (ADR 0003) et par une commande de management ; elles doivent être **idempotentes**.
-6. **Aucun secret dans le repo.** Variables d'environnement uniquement ; `.env.example` à jour.
+6. **Aucun secret dans le repo.** Variables d'environnement uniquement ; `infra/prod/vigil.env.example` à jour.
 7. **Ne désactive pas un contrôle (ruff, import-linter, `check --deploy`) pour faire passer un
    changement** : corrige la cause, ou écris une ADR.
 8. Tout nouveau module est déclaré dans `INSTALLED_APPS` **et** dans le contrat « independence »
