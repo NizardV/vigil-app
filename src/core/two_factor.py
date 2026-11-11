@@ -1,11 +1,12 @@
-"""Authentification renforcée (ADR 0007) : double authentification TOTP obligatoire et alertes de sécurité.
+"""Authentification renforcée (ADR 0007) : double authentification obligatoire et alertes de sécurité.
 
-- Toute session connectée doit avoir validé un second facteur (code TOTP ou code de secours), sauf sur quelques
-  chemins publics ou techniques (`EXEMPT_PREFIXES`).
+- Toute session connectée doit avoir validé un second facteur (code TOTP, passkey ou code de secours), sauf sur
+  quelques chemins publics ou techniques (`EXEMPT_PREFIXES`).
+- Passkeys (django-otp-webauthn) : second facteur, ajoutées depuis une session déjà validée (page « Passkeys »).
 - Un compte sans appareil confirmé est envoyé vers l'enrôlement : possible **uniquement** tant qu'aucun appareil
   n'est confirmé. Ensuite, seule la commande `reset_2fa` (accès au serveur requis) permet d'en enrôler un autre.
 - Blocage après échecs de connexion : django-axes (réglages dans settings.py), avec l'IP réelle lue derrière NGINX.
-- Alertes Discord (salon security-alerts) : blocage d'une IP, nouvel appareil 2FA.
+- Alertes Discord (salon security-alerts) : blocage d'une IP, nouvel appareil 2FA, nouvelle passkey, code de secours.
 """
 
 import logging
@@ -18,6 +19,7 @@ from django.conf import settings
 from django.contrib import admin
 from django.core.cache import cache
 from django.db import transaction
+from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect, render
@@ -28,6 +30,7 @@ from django_otp import devices_for_user, user_has_device
 from django_otp import login as otp_login
 from django_otp.plugins.otp_static.models import StaticDevice
 from django_otp.plugins.otp_totp.models import TOTPDevice
+from django_otp_webauthn.models import WebAuthnCredential
 from unfold.widgets import UnfoldAdminTextInputWidget
 
 from core import notifications
@@ -39,7 +42,9 @@ BACKUP_CODES = 10
 SERVER_COMMAND = "cd ~/vigil && docker compose --env-file vigil.env exec web python manage.py"
 # Chemins accessibles sans second facteur, même connecté : santé, webhooks (signés), fichiers statiques, et les
 # pages nécessaires pour s'authentifier ou se déconnecter.
-EXEMPT_PREFIXES = ("/health/", "/watch/discord/", "/static/")
+# L'API d'*authentification* par passkey sert justement à valider le second facteur ; celle d'*enregistrement* reste
+# protégée (session validée exigée, par ce middleware et par django-otp-webauthn).
+EXEMPT_PREFIXES = ("/health/", "/watch/discord/", "/static/", "/webauthn/authentication/", "/webauthn/jsi18n/")
 
 
 # --- IP du client ---------------------------------------------------------------------------------------------
@@ -183,7 +188,10 @@ def verify(request: HttpRequest) -> HttpResponse:
                     )
                 return redirect(_next_url(request))
         form.add_error("token", "Code invalide ou expiré.")
-    return _page(request, "core/two_factor_verify.html", form=form, title="Double authentification")
+    has_passkey = WebAuthnCredential.objects.filter(user=user, confirmed=True).exists()
+    return _page(
+        request, "core/two_factor_verify.html", form=form, has_passkey=has_passkey, title="Double authentification"
+    )
 
 
 @_login_required
@@ -235,3 +243,33 @@ def _confirm(user, device: TOTPDevice) -> list[str]:
     for code in codes:
         backup.token_set.create(token=code)
     return codes
+
+
+# --- Passkeys --------------------------------------------------------------------------------------------------
+
+
+@receiver(post_save, sender=WebAuthnCredential)
+def alert_on_new_passkey(sender, instance: WebAuthnCredential, created: bool, **kwargs) -> None:
+    if created:
+        alert(
+            "🔑 Nouvelle passkey",
+            f"Une passkey vient d'être ajoutée au compte **{notifications.escape(instance.user.get_username())}**. "
+            "Si ce n'est pas toi : supprime-la dans Accès › Passkeys et change le mot de passe.",
+            color=0xF97316,
+        )
+
+
+@_login_required
+def passkeys(request: HttpRequest) -> HttpResponse:
+    """Liste et ajout des passkeys. Accessible seulement avec une session déjà validée (middleware 2FA)."""
+    credentials = WebAuthnCredential.objects.filter(user=request.user).order_by("-created_at")
+    return render(
+        request,
+        "core/two_factor_passkeys.html",
+        {
+            **admin.site.each_context(request),
+            "credentials": credentials,
+            "delete_url": reverse("admin:django_otp_webauthn_webauthncredential_changelist"),
+            "title": "Passkeys",
+        },
+    )

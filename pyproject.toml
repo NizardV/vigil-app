@@ -7,6 +7,7 @@ dependencies = [
     "django>=6.1,<6.2",
     "django-axes>=9.0,<9.1",
     "django-otp>=1.7,<1.8",
+    "django-otp-webauthn>=0.10,<0.11",
     "django-unfold>=0.110,<0.111",
     "feedparser>=6.0.14",
     "gunicorn>=26.2.0",

@@ -14,7 +14,7 @@ Priorités : **stabilité, maintenabilité, sécurité**.
 - [ADR 0003](../docs/adr/0003-procrastinate-pour-les-taches-de-fond.md) — **Procrastinate** (tâches de fond, PostgreSQL requis)
 - [ADR 0004](../docs/adr/0004-frontend-progressif-admin-puis-sveltekit-spa.md) — admin Django, puis **SvelteKit en SPA** statique
 - [ADR 0006](../docs/adr/0006-theme-admin-django-unfold.md) — thème de l'admin **django-unfold** (tableau de bord, pastilles)
-- [ADR 0007](../docs/adr/0007-authentification-renforcee.md) — **2FA TOTP** obligatoire, blocage des tentatives, puis Tailscale
+- [ADR 0007](../docs/adr/0007-authentification-renforcee.md) — **2FA** obligatoire (TOTP ou passkey), blocage des tentatives
 
 Plan et état de la migration : `docs/architecture.md`.
 
@@ -91,10 +91,11 @@ django-unfold (admin).
 
 - `DEBUG` faux par défaut ; un `DJANGO_SECRET_KEY` manquant fait échouer le démarrage (voulu).
 - En production : cookies sécurisés, HSTS, redirection HTTPS (déjà dans `config/settings.py`).
-- Cible : dashboard non exposé publiquement (**Tailscale**, ADR 0007, étape à venir) ; seuls les
-  webhooks entrants restent publics, avec **vérification de signature**.
+- Admin exposé sur Internet (restriction réseau écartée, ADR 0007) : la protection repose sur la 2FA, le blocage des
+  tentatives et les alertes. Les webhooks entrants publics ont une **vérification de signature**.
 - Mots de passe : validateurs Django, 12 caractères minimum.
-- **2FA TOTP obligatoire pour toute session connectée** (ADR 0007, `core/two_factor.py`) : enrôlement web du premier
+- **2FA obligatoire pour toute session connectée** (ADR 0007, `core/two_factor.py`) : TOTP ou passkey (second facteur
+  uniquement, ajout depuis une session validée : Accès › Passkeys). Enrôlement TOTP web du premier
   appareil seulement ; ensuite `manage.py reset_2fa <compte>` sur le serveur. Un nouveau chemin public (webhook…)
   doit être ajouté à `EXEMPT_PREFIXES`. Tests : `core.testing.login_verified(client, user)` au lieu de `force_login`.
 - **Blocage après 5 échecs / IP pendant 1 h** (django-axes ; débloquer : `manage.py axes_reset_ip <ip>`). Alertes

@@ -101,6 +101,7 @@ UNFOLD = {
                 "collapsible": True,
                 "items": [
                     _link("Tentatives de connexion", "lock_person", "admin:axes_accessattempt_changelist"),
+                    _link("Passkeys", "passkey", "two_factor_passkeys"),
                     _link("Appareils 2FA", "phonelink_lock", "admin:otp_totp_totpdevice_changelist"),
                 ],
             },
