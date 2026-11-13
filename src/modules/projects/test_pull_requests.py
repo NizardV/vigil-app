@@ -81,7 +81,7 @@ class TrackTests(TestCase):
         text = self.description(self.post.call_args)
         self.assertIn("🟢 Ouverte", text)
         self.assertIn("⏳ e2e", text)
-        self.assertIn("✅ Vercel", text)
+        self.assertIn("☑️ 1/2 vérifications", text)  # Vercel vert, e2e en cours
         self.assertEqual(PullRequestMessage.objects.get().message_id, "111")
 
     def test_message_modifie_seulement_si_le_contenu_change(self):
@@ -93,7 +93,7 @@ class TrackTests(TestCase):
         self.track(gh)
         self.edit.assert_called_once()
         self.assertEqual(self.edit.call_args.args[1], "111")
-        self.assertIn("✅ e2e", self.description(self.edit.call_args))
+        self.assertIn("✅ 1/1 vérifications", self.description(self.edit.call_args))
 
     def test_echec_signale(self):
         self.track(FakeGitHub(pr(), checks=[run("e2e", conclusion="failure")]))
@@ -106,11 +106,11 @@ class TrackTests(TestCase):
         gh = FakeGitHub(merged, checks=[run("e2e")], merge_checks=[run("deploy", "in_progress", None)])
         self.track(gh)
         self.assertIn("🟣 Fusionnée", self.description(self.post.call_args))
-        self.assertIn("⏳ deploy", self.description(self.post.call_args))
+        self.assertIn("⏳ Déploiement en cours", self.description(self.post.call_args))
         self.assertFalse(PullRequestMessage.objects.get().finished)
         gh.merge_checks = [run("deploy")]
         self.track(gh)
-        self.assertIn("✅ deploy", self.description(self.edit.call_args))
+        self.assertIn("🚀 Déployé en prod", self.description(self.edit.call_args))
         self.assertTrue(PullRequestMessage.objects.get().finished)
         gh.calls.clear()
         self.track(gh)
@@ -120,6 +120,27 @@ class TrackTests(TestCase):
         gh = FakeGitHub(pr(state="closed", merged_at="2026-11-13T19:30:00Z"), checks=[run("e2e")])
         self.track(gh)
         self.assertTrue(PullRequestMessage.objects.get().finished)
+
+    def test_verifications_ignorees_et_taille_de_la_pr(self):
+        pull = {**pr(), "additions": 120, "deletions": 30, "changed_files": 5}
+        self.track(FakeGitHub(pull, checks=[run("e2e"), run("automerge", conclusion="skipped")]))
+        embed = self.post.call_args.args[-1]["embeds"][0]
+        self.assertIn("✅ 1/1 vérifications", embed["description"])  # « automerge » sauté : ni compté ni affiché
+        self.assertNotIn("automerge", embed["description"])
+        self.assertIn("+120 −30 · 5 fichier(s)", embed["description"])
+        self.assertEqual(embed["author"]["name"], "Portfolio · NizardV")
+        self.assertIn("#64 — ", embed["title"].replace("\\", ""))  # Discord retire l'échappement du #
+
+    def test_deploiement_en_echec_avec_lien(self):
+        merged = pr(state="closed", merged_at="2026-11-13T19:58:00Z")
+        failed = {**run("deploy-prod", conclusion="failure"), "html_url": "https://github.com/x/actions/runs/1"}
+        self.track(FakeGitHub(merged, checks=[run("e2e")], merge_checks=[failed, run("CodeQL")]))
+        embed = self.post.call_args.args[-1]["embeds"][0]
+        self.assertIn(
+            "❌ Déploiement échoué : deploy-prod — [logs](https://github.com/x/actions/runs/1)", embed["description"]
+        )
+        self.assertNotIn("CodeQL", embed["description"])  # après fusion, seul le déploiement est affiché
+        self.assertEqual(embed["color"], 0xDC2626)
 
     def test_pr_fermee_sans_fusion(self):
         self.track(FakeGitHub(pr(state="closed"), checks=[run("e2e")]))
