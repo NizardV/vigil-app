@@ -6,11 +6,17 @@ configuré à ce jour) · Module : `src/modules/watch/` · Remplace la veille de
 ## Fonctionnement
 
 1. **Collecte** (`watch.fetch_sources`, toutes les heures à :07 UTC) : télécharge les sources dont l'intervalle est écoulé.
+   Intervalle par défaut : **84 h (deux collectes par semaine)**. Chaque nouvel article coûte une analyse Gemini : on
+   ignore ceux publiés avant la période du résumé du thème (`lookback_days`), et on garde **au plus 10 nouveaux
+   articles par source et par collecte** (les plus récents). Avant le 2026-11-13 : 6 h, ~770 analyses par semaine.
    Types : RSS/Atom, YouTube, Reddit, releases GitHub, Hacker News (`hn:mot-clé`).
 2. **Analyse** (`watch.analyze_pending`, toutes les 20 min) : Gemini produit résumé, points clés et score 1–10 ;
    plafond `WATCH_MAX_ANALYSES_PER_RUN` (30) par passage pour borner le coût.
 3. **Résumé** (`watch.send_digests`, toutes les heures à :03 UTC) : envoyé à l'heure choisie du thème, **heure de Paris**.
-   Un message d'en-tête + un message par article avec les boutons 👍/👎 ; le 👍/👎 oriente les analyses suivantes.
+   Avec le bot : **un seul message** (Discord « Components V2 ») : le résumé, puis chaque article avec ses boutons
+   👍/👎/Lire juste en dessous, **6 articles au plus** (limites Discord : 40 éléments, 4 000 caractères ; un article
+   qui ne tient pas reste candidat pour le résumé suivant). Sans bot (webhook) : en-tête + un message par article, sans
+   boutons. Le 👍/👎 oriente les analyses suivantes.
 
 ## Différences volontaires avec l'ancienne version
 
