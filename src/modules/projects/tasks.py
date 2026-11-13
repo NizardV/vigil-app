@@ -29,3 +29,11 @@ def weekly_digest(timestamp: int) -> dict:
     if result["status"] == "error":
         raise RuntimeError(f"Résumé projets non envoyé : {result['error']}")
     return result
+
+
+@app.periodic(cron="* * * * *")  # toutes les minutes : suivi des PR en direct (#projets-pr)
+@app.task(name="projects.track_pull_requests", queueing_lock="projects.track_pull_requests")
+def track_pull_requests(timestamp: int) -> dict:
+    from .pull_requests import track_pull_requests as run
+
+    return run()
