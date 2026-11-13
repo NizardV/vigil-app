@@ -1,0 +1,9 @@
+[Unit]
+Description=Copie quotidienne des sauvegardes hors du VPS
+
+[Timer]
+OnCalendar=*-*-* 04:15:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

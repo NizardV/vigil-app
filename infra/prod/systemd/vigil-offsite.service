@@ -1,0 +1,8 @@
+[Unit]
+Description=Copie chiffrée des sauvegardes Vigil et Cyna vers Google Drive
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=debian
+ExecStart=/home/debian/vigil/offsite-backup.sh
