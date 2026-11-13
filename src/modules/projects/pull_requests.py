@@ -8,6 +8,7 @@ s'arrête quand la PR est fusionnée/fermée et que plus rien ne tourne.
 
 import hashlib
 import json
+import re
 from collections.abc import Callable
 from datetime import datetime, timedelta
 from typing import Any
@@ -38,50 +39,115 @@ def _icon(status: str, conclusion: str | None) -> str:
     return {"success": "✅", "neutral": "➖", "skipped": "⏭️", "cancelled": "🚫"}.get(conclusion or "", "❌")
 
 
-def _checks(client: GitHubClient, repo: str, sha: str) -> list[tuple[str, str, str | None]]:
-    """(nom, statut, conclusion) des check-runs et des statuts de commit (Vercel…) d'un commit."""
+def _checks(client: GitHubClient, repo: str, sha: str) -> list[dict[str, Any]]:
+    """Check-runs et statuts de commit (Vercel…) d'un commit : nom, statut, conclusion, horaires, lien."""
     runs = client.get(f"/repos/{repo}/commits/{sha}/check-runs", {"per_page": 50}).get("check_runs", [])
-    items = [(r["name"], r["status"], r.get("conclusion")) for r in runs]
-    for s in client.get(f"/repos/{repo}/commits/{sha}/status").get("statuses", []):
-        state = s.get("state", "")
-        conclusion = {"success": "success", "failure": "failure", "error": "failure"}.get(state)
-        items.append((s.get("context", "statut"), "pending" if state == "pending" else "completed", conclusion))
+    items = [
+        {
+            "name": r["name"],
+            "status": r["status"],
+            "conclusion": r.get("conclusion"),
+            "started_at": r.get("started_at"),
+            "completed_at": r.get("completed_at"),
+            "url": r.get("html_url") or r.get("details_url") or "",
+        }
+        for r in runs
+    ]
+    for st in client.get(f"/repos/{repo}/commits/{sha}/status").get("statuses", []):
+        state = st.get("state", "")
+        items.append(
+            {
+                "name": st.get("context", "statut"),
+                "status": "pending" if state == "pending" else "completed",
+                "conclusion": {"success": "success", "failure": "failure", "error": "failure"}.get(state),
+                "started_at": st.get("created_at"),
+                "completed_at": None if state == "pending" else st.get("updated_at"),
+                "url": st.get("target_url") or "",
+            }
+        )
     return items
 
 
+IGNORED = {"skipped", "neutral"}  # vérifications sans intérêt (ex. « automerge » sauté) : ni affichées ni comptées
+DEPLOY = re.compile(r"deploy|vercel|\bcd\b|release|publish", re.IGNORECASE)  # workflows de mise en production
+
+
+def _ago(value: str | None) -> str:
+    """Horodatage relatif Discord (« il y a 2 minutes ») : mis à jour par Discord, sans modifier le message."""
+    return f" <t:{int(_parse(value).timestamp())}:R>" if value else ""
+
+
+def _minutes(start: str, end: str) -> str:
+    minutes = max(1, round((_parse(end) - _parse(start)).total_seconds() / 60))
+    return f"{minutes} min" if minutes < 120 else f"{minutes // 60} h {minutes % 60:02d}"
+
+
+def _checks_line(checks: list[dict[str, Any]]) -> tuple[str, bool]:
+    """Résumé des vérifications : le total si tout va bien, le détail de ce qui tourne ou échoue."""
+    shown = [c for c in checks if c["conclusion"] not in IGNORED]
+    if not shown:
+        return "", False
+    running = [c for c in shown if c["status"] in RUNNING]
+    failed = [c for c in shown if c["status"] not in RUNNING and c["conclusion"] != "success"]
+    ok = len(shown) - len(running) - len(failed)
+    parts = [f"{'✅' if ok == len(shown) else '☑️'} {ok}/{len(shown)} vérifications"]
+    parts += [f"❌ [{notifications.escape(c['name'], 50)}]({c['url']})" if c["url"] else
+              f"❌ {notifications.escape(c['name'], 50)}" for c in failed]  # fmt: skip
+    parts += [f"⏳ {notifications.escape(c['name'], 50)}{_ago(c['started_at'])}" for c in running]
+    return " · ".join(parts), bool(failed)
+
+
+def _deploy_line(merged_at: str, merge_checks: list[dict[str, Any]]) -> str:
+    deploys = [c for c in merge_checks if DEPLOY.search(c["name"]) and c["conclusion"] not in IGNORED]
+    if not deploys:
+        return ""
+    if any(c["status"] in RUNNING for c in deploys):
+        starts = [c["started_at"] for c in deploys if c["started_at"]]
+        return f"⏳ Déploiement en cours{_ago(min(starts)) if starts else ''}"
+    failed = [c for c in deploys if c["conclusion"] != "success"]
+    if failed:
+        link = f" — [logs]({failed[0]['url']})" if failed[0]["url"] else ""
+        return f"❌ Déploiement échoué : {notifications.escape(failed[0]['name'], 50)}{link}"
+    ends = [c["completed_at"] for c in deploys if c["completed_at"]]
+    return f"🚀 Déployé en prod en {_minutes(merged_at, max(ends))}" if ends else "🚀 Déployé en prod"
+
+
 def render(pr: dict[str, Any], checks: list, deploys: list, now: datetime) -> tuple[dict[str, Any], bool]:
-    """Message Discord de la PR et indicateur « suivi terminé »."""
+    """Message Discord de la PR (compact) et indicateur « suivi terminé ». `deploys` = vérifications du commit de
+    fusion, dont on ne retient que le déploiement (workflows « deploy », Vercel…)."""
     repo = pr["base"]["repo"]["full_name"]
-    if pr.get("merged_at"):
+    merged_at = pr.get("merged_at")
+    if merged_at:
         state, color = "🟣 Fusionnée", PURPLE
     elif pr["state"] == "closed":
         state, color = "⚫ Fermée", GREY
     else:
         state, color = "🟢 Ouverte", GREEN
-    lines = [f"**{state}** · `{notifications.escape(pr['head']['ref'], 80)}` → `{pr['base']['ref']}`"]
-    if checks:
-        lines.append("**Vérifications** : " + " · ".join(f"{_icon(s, c)} {notifications.escape(n, 60)}"
-                                                       for n, s, c in sorted(checks)))  # fmt: skip
-        if any(c not in {None, "success", "neutral", "skipped"} and s not in RUNNING for _, s, c in checks):
-            color = RED if not pr.get("merged_at") else color
-    if deploys:
-        lines.append("**Après fusion** : " + " · ".join(f"{_icon(s, c)} {notifications.escape(n, 60)}"
-                                                       for n, s, c in sorted(deploys)))  # fmt: skip
+    stats = ""
+    if pr.get("changed_files") is not None:
+        stats = f" · +{pr.get('additions', 0)} −{pr.get('deletions', 0)} · {pr['changed_files']} fichier(s)"
+    lines = [f"{state} · `{notifications.escape(pr['head']['ref'], 60)}` → `{pr['base']['ref']}`{stats}"]
+    status, failed = _checks_line(checks)
+    deploy = _deploy_line(merged_at, deploys) if merged_at else ""
+    if failed and not merged_at:
+        color = RED
+    if deploy.startswith("❌"):
+        color = RED
+    lines.append(" · ".join(part for part in (status, deploy) if part))
     author = pr["user"]["login"]
-    title = f"{'🤖 ' if author.endswith('[bot]') else ''}{repo.split('/')[-1]} #{pr['number']} — {pr['title']}"
+    title = f"{'🤖 ' if author.endswith('[bot]') else ''}#{pr['number']} — {pr['title']}"
     message = {
         "embeds": [
             {
+                "author": {"name": f"{repo.split('/')[-1]} · {author}", "url": f"https://github.com/{repo}"},
                 "title": notifications.escape(title, 250),
                 "url": pr["html_url"],
-                "description": "\n".join(lines)[:3500],
+                "description": "\n".join(line for line in lines if line)[:3500],
                 "color": color,
-                "footer": {"text": f"Vigil Projects · {author}"},
             }
         ]
     }
-    running = any(s in RUNNING for _, s, _ in checks + deploys)
-    merged_at = pr.get("merged_at")
+    running = any(c["status"] in RUNNING for c in checks + deploys)
     settled = not merged_at or bool(deploys) or now - _parse(merged_at) > DEPLOY_GRACE  # rien ne s'est lancé
     finished = pr["state"] == "closed" and not running and settled
     return message, finished
