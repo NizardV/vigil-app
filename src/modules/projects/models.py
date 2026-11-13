@@ -30,3 +30,24 @@ class TrackedRepo(models.Model):
         from .services import compute_verdict
 
         return compute_verdict(self)
+
+
+class PullRequestMessage(models.Model):
+    """Message Discord (#projets-pr) qui suit une PR en direct : modifié à chaque changement d'état."""
+
+    repo = models.CharField(verbose_name="dépôt", max_length=200)
+    number = models.PositiveIntegerField(verbose_name="numéro")
+    message_id = models.CharField(verbose_name="message Discord", max_length=30)
+    fingerprint = models.CharField(
+        verbose_name="empreinte du contenu", max_length=64
+    )  # évite les modifications inutiles
+    finished = models.BooleanField(verbose_name="terminé", default=False)  # fusionnée/fermée et plus rien en cours
+    updated_at = models.DateTimeField(verbose_name="mis à jour le", auto_now=True)
+
+    class Meta:
+        verbose_name = "suivi de PR"
+        verbose_name_plural = "suivi des PR"
+        constraints = [models.UniqueConstraint(fields=["repo", "number"], name="projects_pr_message_unique")]
+
+    def __str__(self) -> str:
+        return f"{self.repo}#{self.number}"

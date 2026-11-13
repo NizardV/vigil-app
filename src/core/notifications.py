@@ -93,3 +93,33 @@ def send_discord(webhook_url: str, payload: dict[str, Any], timeout: int = 10) -
             raise NotificationError(f"Discord a répondu {exc.code}") from None
         except (urllib.error.URLError, TimeoutError, OSError):
             raise NotificationError("Discord injoignable") from None
+
+
+def _webhook_call(method: str, url: str, payload: dict[str, Any], timeout: int) -> dict[str, Any]:
+    body = json.dumps({**payload, "allowed_mentions": {"parse": []}}).encode("utf-8")
+    headers = {"Content-Type": "application/json", "User-Agent": "DiscordBot (vigil, 1.0)"}
+    request = urllib.request.Request(url, data=body, headers=headers, method=method)  # noqa: S310
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as response:  # noqa: S310 - https + hôte Discord validés
+            return json.loads(response.read().decode("utf-8") or "{}")
+    except urllib.error.HTTPError as exc:
+        raise NotificationError(f"Discord a répondu {exc.code}") from None
+    except (urllib.error.URLError, TimeoutError, OSError, ValueError):
+        raise NotificationError("Discord injoignable") from None
+
+
+def post_discord(webhook_url: str, payload: dict[str, Any], timeout: int = 10) -> str:
+    """Poste `payload` et renvoie l'identifiant du message (pour le modifier ensuite avec `edit_discord`)."""
+    _validate(webhook_url)
+    message = _webhook_call("POST", f"{webhook_url}?wait=true", payload, timeout)
+    if not message.get("id"):
+        raise NotificationError("Discord n'a pas renvoyé d'identifiant de message")
+    return str(message["id"])
+
+
+def edit_discord(webhook_url: str, message_id: str, payload: dict[str, Any], timeout: int = 10) -> None:
+    """Modifie un message posté par ce webhook (un webhook ne peut modifier que ses propres messages)."""
+    _validate(webhook_url)
+    if not str(message_id).isdigit():
+        raise NotificationError("identifiant de message Discord invalide")
+    _webhook_call("PATCH", f"{webhook_url}/messages/{message_id}", payload, timeout)
