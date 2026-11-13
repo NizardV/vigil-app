@@ -13,6 +13,7 @@ from datetime import datetime, timedelta
 from typing import Any
 
 from django.conf import settings
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from core import notifications
@@ -119,8 +120,8 @@ def track_pull_requests(
     for item in found:
         repo = item["repository_url"].split("/repos/", 1)[1]
         known = PullRequestMessage.objects.filter(repo=repo, number=item["number"]).first()
-        if known and known.finished:
-            continue
+        if known and (known.finished or not known.message_id):
+            continue  # terminé, ou message en cours de création par une autre exécution
         try:
             pr = client.get(f"/repos/{repo}/pulls/{item['number']}")
             checks = _checks(client, repo, pr["head"]["sha"])
@@ -133,10 +134,20 @@ def track_pull_requests(
         fingerprint = _fingerprint(message)
         try:
             if known is None:
-                message_id = post(url, message)
-                PullRequestMessage.objects.create(
-                    repo=repo, number=pr["number"], message_id=message_id, fingerprint=fingerprint, finished=finished
-                )
+                # Réserve la ligne AVANT de poster : deux exécutions simultanées (tâche + commande manuelle) ne
+                # peuvent pas poster deux messages pour la même PR ; la seconde bute sur la contrainte d'unicité.
+                try:
+                    with transaction.atomic():
+                        row = PullRequestMessage.objects.create(repo=repo, number=pr["number"], message_id="")
+                except IntegrityError:
+                    continue
+                try:
+                    row.message_id = post(url, message)
+                except notifications.NotificationError:
+                    row.delete()  # rien n'est parti : retenté à la minute suivante
+                    raise
+                row.fingerprint, row.finished = fingerprint, finished
+                row.save(update_fields=["message_id", "fingerprint", "finished", "updated_at"])
                 result["posted"] += 1
             elif known.fingerprint != fingerprint or known.finished != finished:
                 if known.fingerprint != fingerprint:
