@@ -117,6 +117,10 @@ django-unfold (admin).
   les majeures restent à relire. CodeQL et SonarCloud (analyse automatique de `main`) sont actifs.
 - À supprimer vers le 2026-12-08 : anciens conteneurs `vigil_*` arrêtés, leurs volumes, `/home/debian/vigil-infra`,
   `/home/debian/vigil-old-backup-2026-11-08.sql.gz`.
+- **Relancer les conteneurs sur le VPS (après une modification de `vigil.env`)** : le compose utilise
+  `ghcr.io/nizardv/vigil-app:${VIGIL_TAG:-latest}` et seul `vigil-deploy.sh` fixe `VIGIL_TAG`. Un simple
+  `docker compose up -d` relance l'image `latest`, PLUS ANCIENNE (incident du 2026-11-13). Toujours :
+  `VIGIL_TAG=$(docker inspect -f '{{.Config.Image}}' vigil-web-1 | cut -d: -f2) docker compose --env-file vigil.env up -d web worker`
 - Runbooks dans `docs/runbooks/`.
 
 ## Notion
