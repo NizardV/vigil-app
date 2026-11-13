@@ -17,6 +17,7 @@ from core.netfetch import FetchError, fetch_public
 from .models import Article, Source
 
 MAX_PER_SOURCE = 20
+MAX_NEW_PER_FETCH = 10  # nouveaux articles gardés par source et par collecte (plafond du coût d'analyse)
 MAX_FAILURES = 10  # une source qui échoue 10 fois d'affilée est suspendue (à remettre à zéro à la main)
 SLACK = timedelta(minutes=5)
 URL_LIMIT = 1000
@@ -124,6 +125,14 @@ def fetch_source(source: Source, *, fetch: Fetcher = fetch_public, now: datetime
     """Collecte une source et renvoie le nombre de NOUVEAUX articles. Lève en cas d'échec (l'appelant enregistre)."""
     now = now or timezone.now()
     entries = parse_entries(fetch(ensure_feed_url(source, fetch=fetch)))
+    # Chaque nouvel article coûte une analyse Gemini : on ne garde que ce qui peut finir dans un résumé.
+    # - publié avant la période du résumé du thème : il n'y figurera jamais ;
+    # - au plus MAX_NEW_PER_FETCH nouveaux articles par source et par collecte, les plus récents d'abord.
+    oldest = now - timedelta(days=source.theme.lookback_days)
+    known = set(Article.objects.filter(url__in=[e["url"] for e in entries]).values_list("url", flat=True))
+    fresh = [e for e in entries if e["url"] not in known and (e["published_at"] is None or e["published_at"] >= oldest)]
+    fresh.sort(key=lambda e: e["published_at"] or now, reverse=True)
+    entries = fresh[:MAX_NEW_PER_FETCH]
     created = 0
     for item in entries:
         _, was_created = Article.objects.get_or_create(

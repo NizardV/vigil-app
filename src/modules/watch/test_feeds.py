@@ -97,6 +97,35 @@ class FetchTests(TestCase):
         self.source.refresh_from_db()
         self.assertEqual((self.source.last_fetched_at, self.source.failures, self.source.last_error), (NOW, 0, ""))
 
+    def _feed(self, days_ago: list[int]) -> bytes:
+        from email.utils import format_datetime
+
+        items = "".join(
+            f"<item><title>t{i}</title><link>https://x.example/{i}</link>"
+            f"<pubDate>{format_datetime(NOW - timedelta(days=d))}</pubDate></item>"
+            for i, d in enumerate(days_ago)
+        )
+        return f'<?xml version="1.0"?><rss version="2.0"><channel><title>x</title>{items}</channel></rss>'.encode()
+
+    def test_articles_trop_anciens_pour_le_resume_ignores(self):
+        """Publié avant la période du résumé (7 j) : il n'y figurera jamais, inutile de payer son analyse."""
+        self.theme.lookback_days = 7  # comme les thèmes en production (résumé hebdomadaire)
+        self.theme.save()
+        self.source.refresh_from_db()
+        body = self._feed([1, 3, 6, 8, 30, 200])
+        self.assertEqual(feeds.fetch_source(self.source, fetch=lambda url, **kw: body, now=NOW), 3)
+        self.assertEqual(sorted(Article.objects.values_list("title", flat=True)), ["t0", "t1", "t2"])
+
+    def test_au_plus_dix_nouveaux_articles_par_collecte_les_plus_recents(self):
+        body = self._feed([0] * 5 + [1] * 5 + [2] * 5)  # 15 articles récents, du plus récent au plus ancien
+        self.assertEqual(
+            feeds.fetch_source(self.source, fetch=lambda url, **kw: body, now=NOW), feeds.MAX_NEW_PER_FETCH
+        )
+        self.assertFalse(Article.objects.filter(title__in=["t10", "t11", "t12", "t13", "t14"]).exists())
+
+    def test_intervalle_par_defaut_deux_collectes_par_semaine(self):
+        self.assertEqual(self.source.fetch_interval_hours, 84)
+
     def test_meme_article_avec_suivi_different_n_est_pas_duplique(self):
         feeds.fetch_source(self.source, fetch=lambda url, **kw: RSS, now=NOW)
         variant = RSS.replace(b"utm_source=x&amp;id=1", b"id=1&amp;utm_campaign=nl")

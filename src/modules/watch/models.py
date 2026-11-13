@@ -76,7 +76,7 @@ class Source(models.Model):
     kind = models.CharField(verbose_name="type", max_length=20, choices=Kind, default=Kind.RSS)
     active = models.BooleanField(verbose_name="active", default=True)
     fetch_interval_hours = models.PositiveSmallIntegerField(
-        verbose_name="intervalle (h)", default=6, validators=[MinValueValidator(1), MaxValueValidator(168)]
+        verbose_name="intervalle (h)", default=84, validators=[MinValueValidator(1), MaxValueValidator(168)]
     )
     last_fetched_at = models.DateTimeField(verbose_name="dernière collecte", null=True, blank=True)
     last_error = models.CharField(verbose_name="dernière erreur", max_length=300, blank=True)

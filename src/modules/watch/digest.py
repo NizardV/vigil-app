@@ -5,8 +5,12 @@ n'est candidat que s'il est récent (48 h), jamais envoyé, et au-dessus du scor
 est marqué (`digested_at`) et ne revient plus.
 
 Deux modes de livraison :
-- bot Discord (salon identifié) : un message par article avec les boutons 👍/👎 ;
-- webhook du salon (`DISCORD_WEBHOOK_WATCH_<THEME>`) : mêmes messages, sans boutons (limite de Discord).
+- bot Discord (salon identifié) : **un seul message** (« Components V2 ») : le résumé, puis chaque article avec ses
+  boutons 👍/👎/Lire juste en dessous ;
+- webhook du salon (`DISCORD_WEBHOOK_WATCH_<THEME>`) : un message par article, sans boutons (limite de Discord).
+
+Au plus `LIMIT` articles par résumé : un message Components V2 compte 40 éléments au maximum (~6 par article) et
+4 000 caractères de texte au total.
 """
 
 import json
@@ -27,7 +31,13 @@ from core.notifications import NotificationError, escape, send_discord, webhook_
 from .models import Analysis, Article, Digest, Theme
 
 PARIS = ZoneInfo("Europe/Paris")
-LIMIT = 10
+LIMIT = 6  # articles par résumé (choix : une lecture hebdomadaire courte ; et limite d'un message Components V2)
+# Components V2 (https://discord.com/developers/docs/components/reference)
+IS_COMPONENTS_V2 = 1 << 15
+ACTION_ROW, BUTTON, TEXT_DISPLAY, SEPARATOR, CONTAINER = 1, 2, 10, 14, 17
+V2_TEXT_BUDGET = 3900  # Discord : 4 000 caractères au total dans les TextDisplay d'un message
+V2_HEADER_LIMIT = 900
+V2_SUMMARY_LIMIT = 280
 BLURPLE = 0x5865F2
 TEXT_LIMIT = 3500
 _LINK = re.compile(r"\[([^\]]*)\]\([^)]*\)")
@@ -100,9 +110,57 @@ def escape_keep_markdown(text: str) -> str:
     return text.replace("@", "@​")[:TEXT_LIMIT]
 
 
+def _score_icon(score: float) -> str:
+    return "🟢" if score >= 7 else "🟡" if score >= 4 else "🔴"
+
+
+def _feedback_buttons(article: Article) -> list[dict[str, Any]]:
+    return [
+        {"type": BUTTON, "style": 3, "label": "Pertinent", "emoji": {"name": "👍"},
+         "custom_id": f"watch:fb:{article.id}:1"},
+        {"type": BUTTON, "style": 4, "label": "Hors sujet", "emoji": {"name": "👎"},
+         "custom_id": f"watch:fb:{article.id}:-1"},
+        {"type": BUTTON, "style": 5, "label": "Lire", "url": article.url},
+    ]  # fmt: skip
+
+
+def digest_message(theme: Theme, text: str, entries: list[Analysis]) -> dict[str, Any]:
+    """Résumé complet en UN message Components V2 : en-tête, puis chaque article et ses boutons juste en dessous."""
+    header = f"## 📰 Veille — {escape(theme.name, 200)}\n{escape_keep_markdown(text)[:V2_HEADER_LIMIT]}"
+    blocks: list[dict[str, Any]] = [{"type": TEXT_DISPLAY, "content": header}]
+    used = len(header)
+    for analysis in entries[:LIMIT]:
+        article, score = analysis.article, analysis.relevance_score
+        content = (
+            f"### [{escape(article.title, 150)}]({article.url})\n"
+            f"{escape(analysis.summary, V2_SUMMARY_LIMIT)}\n"
+            f"**Score :** {_score_icon(score)} `{score:.1f}/10`"
+        )
+        if used + len(content) > V2_TEXT_BUDGET:
+            break
+        used += len(content)
+        blocks += [
+            {"type": SEPARATOR},
+            {"type": TEXT_DISPLAY, "content": content},
+            {"type": ACTION_ROW, "components": _feedback_buttons(article)},
+        ]
+    shown = sum(1 for b in blocks if b["type"] == ACTION_ROW)
+    blocks += [{"type": SEPARATOR}, {"type": TEXT_DISPLAY, "content": f"-# Vigil Watch · {shown} article(s)"}]
+    return {
+        "flags": IS_COMPONENTS_V2,
+        "components": [{"type": CONTAINER, "accent_color": BLURPLE, "components": blocks}],
+    }
+
+
+def digest_article_ids(message: dict[str, Any]) -> list[int]:
+    """Articles réellement présents dans un message Components V2 (le budget de texte peut en écarter)."""
+    rows = [b for b in message["components"][0]["components"] if b["type"] == ACTION_ROW]
+    return [int(row["components"][0]["custom_id"].split(":")[2]) for row in rows]
+
+
 def article_message(analysis: Analysis, theme: Theme, *, buttons: bool) -> dict[str, Any]:
     article, score = analysis.article, analysis.relevance_score
-    icon = "🟢" if score >= 7 else "🟡" if score >= 4 else "🔴"
+    icon = _score_icon(score)
     message: dict[str, Any] = {
         "embeds": [
             {
@@ -115,18 +173,7 @@ def article_message(analysis: Analysis, theme: Theme, *, buttons: bool) -> dict[
         ]
     }
     if buttons:
-        message["components"] = [
-            {
-                "type": 1,
-                "components": [
-                    {"type": 2, "style": 3, "label": "Pertinent", "emoji": {"name": "👍"},
-                     "custom_id": f"watch:fb:{article.id}:1"},
-                    {"type": 2, "style": 4, "label": "Hors sujet", "emoji": {"name": "👎"},
-                     "custom_id": f"watch:fb:{article.id}:-1"},
-                    {"type": 2, "style": 5, "label": "Lire", "url": article.url},
-                ],
-            }
-        ]  # fmt: skip
+        message["components"] = [{"type": ACTION_ROW, "components": _feedback_buttons(article)}]
     return message
 
 
@@ -160,8 +207,14 @@ def send_theme_digest(
     use_bot = bool(theme.discord_channel_id and token)
     webhook = webhook_url(f"watch-{theme.slug}")
     text = digest_text(theme, entries, llm)
-    messages: list[tuple[int | None, dict]] = [(None, header_message(theme, text, len(entries)))]
-    messages += [(a.article_id, article_message(a, theme, buttons=use_bot)) for a in entries]
+    # (articles livrés par ce message, message)
+    messages: list[tuple[list[int], dict]]
+    if use_bot:
+        single = digest_message(theme, text, entries)
+        messages = [(digest_article_ids(single), single)]
+    else:
+        messages = [([], header_message(theme, text, len(entries)))]
+        messages += [([a.article_id], article_message(a, theme, buttons=False)) for a in entries]
 
     if dry_run:
         mode = "bot" if use_bot else "webhook" if webhook else "none"
@@ -174,13 +227,12 @@ def send_theme_digest(
 
     delivered: list[int] = []
     try:
-        for index, (article_id, message) in enumerate(messages):
+        for index, (article_ids, message) in enumerate(messages):
             if use_bot:
                 send_bot(theme.discord_channel_id, message, token)
             else:
                 send_webhook(webhook, message)
-            if article_id:
-                delivered.append(article_id)
+            delivered += article_ids
             if pause and index < len(messages) - 1:
                 time.sleep(pause)  # limites de débit de Discord
     except NotificationError as exc:

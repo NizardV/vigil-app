@@ -142,11 +142,40 @@ class SendTests(Base):
         rec = Recorder()
         result = self.send(rec, llm=None)
         self.assertEqual(result["mode"], "bot")
-        buttons = rec.sent[1]["components"][0]["components"]
+        self.assertEqual(len(rec.sent), 1)  # un seul message : résumé + articles + boutons
+        message = rec.sent[0]
+        self.assertEqual(message["flags"], digest.IS_COMPONENTS_V2)
+        rows = [b for b in message["components"][0]["components"] if b["type"] == digest.ACTION_ROW]
+        buttons = rows[0]["components"]
         self.assertEqual(
             [b["custom_id"] for b in buttons[:2]], [f"watch:fb:{article.id}:1", f"watch:fb:{article.id}:-1"]
         )
         self.assertTrue(buttons[2]["url"].startswith("https://"))
+
+    @override_settings(DISCORD_WEBHOOKS={}, DISCORD_BOT_TOKEN="bot-key")  # noqa: S106
+    def test_bot_message_unique_dans_les_limites_de_discord(self):
+        """Components V2 : 40 éléments au plus et 4 000 caractères de texte ; chaque article sous l'en-tête."""
+        self.theme.discord_channel_id = "123456789012345678"
+        self.theme.save()
+        for n in range(10):
+            a = self.article(n)
+            Analysis.objects.filter(article=a).update(summary="Très long résumé. " * 80)
+        rec = Recorder()
+        result = self.send(rec, llm=FakeLLM(text="Tendance. " * 400))
+        message = rec.sent[0]
+        blocks = message["components"][0]["components"]
+
+        def count(items):
+            return sum(1 + count(i.get("components", [])) for i in items)
+
+        self.assertLessEqual(count(message["components"]), 40)
+        texts = [b["content"] for b in blocks if b["type"] == digest.TEXT_DISPLAY]
+        self.assertLessEqual(sum(len(t) for t in texts), 4000)
+        rows = [b for b in blocks if b["type"] == digest.ACTION_ROW]
+        self.assertLessEqual(len(rows), digest.LIMIT)
+        self.assertEqual(result["articles"], len(rows))  # seuls les articles affichés sont marqués comme envoyés
+        self.assertEqual(Article.objects.filter(digested_at=NOW).count(), len(rows))
+        self.assertTrue(texts[0].startswith("## 📰 Veille — IA"))
 
     @override_settings(DISCORD_WEBHOOKS={"watch-ia": HOOK}, DISCORD_BOT_TOKEN="")
     def test_un_article_n_est_jamais_renvoye(self):
