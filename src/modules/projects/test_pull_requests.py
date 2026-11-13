@@ -151,3 +151,21 @@ class TrackTests(TestCase):
 
         app.perform_import_paths()
         self.assertIn("projects.track_pull_requests", app.tasks)
+
+
+@override_settings(DISCORD_WEBHOOKS=HOOK, GITHUB_OWNER="NizardV")
+class ConcurrencyTests(TestCase):
+    def test_execution_simultanee_ne_poste_qu_un_message(self):
+        """Une autre exécution a déjà réservé la PR (message en cours d'envoi) : on ne poste pas une seconde fois."""
+        PullRequestMessage.objects.create(repo=REPO, number=64, message_id="")
+        post = mock.Mock(return_value="222")
+        track_pull_requests(client=FakeGitHub(pr()), post=post, edit=mock.Mock(), now=NOW)
+        post.assert_not_called()
+
+    def test_echec_d_envoi_libere_la_reservation(self):
+        from core.notifications import NotificationError
+
+        post = mock.Mock(side_effect=NotificationError("Discord indisponible"))
+        result = track_pull_requests(client=FakeGitHub(pr()), post=post, edit=mock.Mock(), now=NOW)
+        self.assertEqual(result["status"], "error")
+        self.assertFalse(PullRequestMessage.objects.exists())  # retenté à la minute suivante
