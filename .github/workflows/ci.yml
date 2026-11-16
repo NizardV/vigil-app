@@ -30,7 +30,7 @@ jobs:
       DJANGO_DEBUG: "1"
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0   # SonarCloud a besoin de l'historique pour attribuer les nouveaux problèmes
       - uses: astral-sh/setup-uv@v7
