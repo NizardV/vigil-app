@@ -44,4 +44,4 @@ jobs:
       - name: Analyse SonarCloud
         # Sans jeton (PR Dependabot, fork) : l'étape est ignorée, le reste du CI reste valide.
         if: env.SONAR_TOKEN != ''
-        uses: SonarSource/sonarqube-scan-action@v8.4.1
+        uses: SonarSource/sonarqube-scan-action@v8.5.0
